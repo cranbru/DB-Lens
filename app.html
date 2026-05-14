@@ -1,0 +1,1701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DB Lens - Visual SQLite Viewer</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+<script>
+tailwind.config={theme:{extend:{fontFamily:{display:['Space Grotesk','sans-serif'],body:['DM Sans','sans-serif']},colors:{accent:'#E8A838','accent-hover':'#F0B84A','accent-dim':'#C48A20',bg:'#0B0F19','bg-alt':'#111827',surface:'rgba(255,255,255,0.04)','surface-hover':'rgba(255,255,255,0.08)',border:'rgba(255,255,255,0.08)','border-light':'rgba(255,255,255,0.12)'}}}}
+</script>
+<style>
+:root{--accent:#E8A838;--accent-glow:rgba(232,168,56,0.3);--bg:#0B0F19;--surface:rgba(255,255,255,0.04);--border:rgba(255,255,255,0.08);--text:#E5E7EB;--muted:#6B7280}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.2)}
+
+
+.bg-orb{position:fixed;border-radius:50%;filter:blur(120px);opacity:0.12;pointer-events:none;z-index:0}
+@keyframes orb-float{0%,100%{transform:translate(0,0) scale(1)}25%{transform:translate(30px,-40px) scale(1.05)}50%{transform:translate(-20px,20px) scale(0.95)}75%{transform:translate(40px,30px) scale(1.02)}}
+.bg-orb{animation:orb-float 25s ease-in-out infinite}
+
+
+.glass{background:var(--surface);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:16px}
+.glass-sm{background:var(--surface);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:12px}
+
+
+.view-panel{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .35s ease,transform .35s ease;transform:translateY(8px);overflow:auto;padding:24px}
+.view-panel.active{opacity:1;pointer-events:auto;transform:translateY(0)}
+
+
+.drop-zone{border:2px dashed rgba(232,168,56,0.3);border-radius:20px;transition:all .3s ease;cursor:pointer}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:rgba(232,168,56,0.05);transform:scale(1.01);box-shadow:0 0 60px rgba(232,168,56,0.1)}
+.drop-zone.drag-over .drop-icon{transform:scale(1.15) translateY(-4px)}
+.drop-icon{transition:transform .3s ease}
+@keyframes icon-bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.drop-icon{animation:icon-bounce 3s ease-in-out infinite}
+
+
+.sidebar-item{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:10px;cursor:pointer;transition:all .2s ease;color:var(--muted);font-size:13.5px;border-left:3px solid transparent}
+.sidebar-item:hover{background:rgba(255,255,255,0.05);color:var(--text)}
+.sidebar-item.active{background:rgba(232,168,56,0.1);color:var(--accent);border-left-color:var(--accent)}
+.sidebar-item i{width:18px;text-align:center;font-size:13px}
+.table-item{display:flex;align-items:center;justify-content:space-between;padding:8px 14px 8px 28px;border-radius:8px;cursor:pointer;transition:all .2s ease;color:var(--muted);font-size:13px}
+.table-item:hover{background:rgba(255,255,255,0.04);color:var(--text)}
+.table-item.active{background:rgba(232,168,56,0.08);color:var(--accent)}
+.table-count{font-size:11px;background:rgba(255,255,255,0.06);padding:2px 8px;border-radius:10px;color:var(--muted)}
+
+
+.stat-card{transition:all .3s ease}
+.stat-card:hover{transform:translateY(-3px);border-color:rgba(232,168,56,0.2);box-shadow:0 8px 32px rgba(0,0,0,0.3)}
+
+
+.data-grid{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
+.data-grid thead{position:sticky;top:0;z-index:10}
+.data-grid th{background:rgba(17,24,39,0.95);backdrop-filter:blur(8px);padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);border-bottom:1px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap;transition:color .2s}
+.data-grid th:hover{color:var(--accent)}
+.data-grid th.sorted{color:var(--accent)}
+.data-grid td{padding:9px 14px;border-bottom:1px solid rgba(255,255,255,0.03);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:background .15s}
+.data-grid.compact th{padding:8px 12px}
+.data-grid.compact td{padding:6px 12px}
+.data-grid tr:hover td{background:rgba(255,255,255,0.03)}
+.data-grid tr.row-selected td{background:rgba(232,168,56,0.08)}
+.data-grid .fk-link{color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.data-grid .fk-link:hover{color:var(--accent-hover)}
+
+
+.inspector-panel{position:fixed;top:0;right:0;bottom:0;width:420px;max-width:90vw;background:rgba(17,24,39,0.97);backdrop-filter:blur(24px);border-left:1px solid var(--border);z-index:100;transform:translateX(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);overflow-y:auto}
+.inspector-panel.open{transform:translateX(0)}
+.inspector-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:99;opacity:0;pointer-events:none;transition:opacity .3s}
+.inspector-overlay.open{opacity:1;pointer-events:auto}
+
+
+.query-editor{font-family:'Fira Code','Cascadia Code','Consolas',monospace;background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:12px;color:#E8A838;padding:16px;font-size:13.5px;line-height:1.6;resize:vertical;outline:none;transition:border-color .2s;width:100%;min-height:120px;tab-size:2}
+.query-editor:focus{border-color:rgba(232,168,56,0.4)}
+.query-editor::placeholder{color:rgba(255,255,255,0.2)}
+
+
+.toast{padding:12px 20px;border-radius:12px;font-size:13px;font-weight:500;backdrop-filter:blur(12px);border:1px solid var(--border);animation:toast-in .35s ease forwards;pointer-events:auto;display:flex;align-items:center;gap:10px}
+.toast.toast-out{animation:toast-out .3s ease forwards}
+.toast-success{background:rgba(16,185,129,0.15);border-color:rgba(16,185,129,0.3);color:#6EE7B7}
+.toast-error{background:rgba(239,68,68,0.15);border-color:rgba(239,68,68,0.3);color:#FCA5A5}
+.toast-info{background:rgba(232,168,56,0.15);border-color:rgba(232,168,56,0.3);color:#FCD34D}
+@keyframes toast-in{from{opacity:0;transform:translateY(-12px) scale(0.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes toast-out{from{opacity:1;transform:translateY(0) scale(1)}to{opacity:0;transform:translateY(-12px) scale(0.95)}}
+
+
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:.3px}
+
+
+.profile-button{position:fixed;top:18px;right:20px;z-index:120;display:flex;align-items:center;gap:10px;padding:7px 10px 7px 7px;border-radius:14px;background:rgba(17,24,39,0.78);backdrop-filter:blur(18px);border:1px solid var(--border);transition:all .2s ease;color:var(--text)}
+.profile-button:hover{background:rgba(255,255,255,0.08);border-color:rgba(232,168,56,0.22);transform:translateY(-1px)}
+.avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,rgba(232,168,56,.24),rgba(20,184,166,.2));border:1px solid rgba(255,255,255,0.12);display:inline-flex;align-items:center;justify-content:center;overflow:hidden;color:var(--accent);font-size:13px;font-weight:700;flex-shrink:0}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.avatar i{font-size:13px}
+.avatar-lg{width:76px;height:76px;font-size:24px}
+.avatar-lg i{font-size:24px}
+.avatar-choice{height:64px;border-radius:14px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text);transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;background:rgba(255,255,255,.04)}
+.avatar-choice:hover{transform:translateY(-2px);border-color:rgba(232,168,56,.28)}
+.avatar-choice.selected{border-color:rgba(232,168,56,.7);box-shadow:0 0 0 2px rgba(232,168,56,.12)}
+.avatar-choice i{font-size:20px}
+.profile-menu{position:fixed;top:66px;right:20px;z-index:130;width:280px;padding:10px;border-radius:16px;background:rgba(17,24,39,.96);border:1px solid var(--border);box-shadow:0 18px 60px rgba(0,0,0,.42);backdrop-filter:blur(22px);transform-origin:top right;transition:opacity .18s ease,transform .18s ease}
+.profile-menu.hidden{display:block;opacity:0;pointer-events:none;transform:translateY(-8px) scale(.97)}
+.profile-menu-item{display:flex;align-items:center;gap:10px;width:100%;padding:10px 11px;border-radius:10px;color:var(--muted);font-size:13px;transition:all .18s ease;text-align:left}
+.profile-menu-item:hover{background:rgba(255,255,255,.06);color:var(--text)}
+.saved-db-card{transition:transform .22s ease,border-color .22s ease,background .22s ease}
+.saved-db-card:hover{transform:translateY(-2px);border-color:rgba(232,168,56,.2);background:rgba(255,255,255,.055)}
+.icon-btn{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted);transition:all .18s ease}
+.icon-btn:hover{color:var(--text);background:rgba(255,255,255,.09);border-color:var(--border-light)}
+.icon-btn.danger:hover{color:#FCA5A5;border-color:rgba(239,68,68,.28);background:rgba(239,68,68,.1)}
+.pref-toggle{position:relative;width:44px;height:24px;border-radius:999px;background:rgba(255,255,255,.11);transition:background .2s ease;flex-shrink:0}
+.pref-toggle::after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#D1D5DB;transition:transform .2s ease,background .2s ease}
+.pref-toggle.active{background:rgba(232,168,56,.35)}
+.pref-toggle.active::after{transform:translateX(20px);background:var(--accent)}
+.form-field{width:100%;border:1px solid var(--border);background:rgba(0,0,0,.26);border-radius:11px;color:var(--text);font-size:14px;padding:10px 12px;outline:none;transition:border-color .2s ease,background .2s ease}
+.form-field:focus{border-color:rgba(232,168,56,.42);background:rgba(0,0,0,.34)}
+.session-pill{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(232,168,56,.24);background:rgba(232,168,56,.1);color:#FCD34D;border-radius:999px;padding:4px 10px;font-size:11px;font-weight:700;letter-spacing:.25px}
+
+
+.spinner{width:40px;height:40px;border:3px solid rgba(232,168,56,0.15);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+
+@keyframes fade-up{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.fade-up{animation:fade-up .5s ease forwards;opacity:0}
+
+
+.graph-tooltip{position:absolute;pointer-events:none;background:rgba(17,24,39,0.95);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:12px;z-index:50;opacity:0;transition:opacity .2s;white-space:nowrap}
+.graph-tooltip.visible{opacity:1}
+
+
+@media(max-width:768px){
+  .inspector-panel{width:100%}
+  #sidebar{display:none}
+}
+
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:0.01ms!important;transition-duration:0.01ms!important}
+}
+
+
+.chart-container{position:relative;width:100%;max-height:400px}
+</style>
+</head>
+<body class="font-body">
+
+
+<div class="bg-orb" style="width:600px;height:600px;background:#E8A838;top:-200px;right:-100px"></div>
+<div class="bg-orb" style="width:500px;height:500px;background:#10B981;bottom:-180px;left:-120px;animation-delay:-8s"></div>
+<div class="bg-orb" style="width:350px;height:350px;background:#06B6D4;top:40%;left:40%;animation-delay:-15s"></div>
+
+
+<button id="profile-button" class="profile-button" onclick="toggleProfileMenu()" aria-label="Open account menu">
+  <span id="profile-button-avatar" class="avatar"></span>
+  <span class="hidden sm:block text-left leading-tight">
+    <span id="profile-button-name" class="block text-xs font-semibold max-w-[120px] truncate">Local Analyst</span>
+    <span class="block text-[10px] text-muted">Client-side session</span>
+  </span>
+  <i class="fa-solid fa-chevron-down text-[10px] text-muted"></i>
+</button>
+<div id="profile-menu" class="profile-menu hidden">
+  <div class="flex items-center gap-3 px-2 py-2 border-b border-border mb-2">
+    <span id="profile-menu-avatar" class="avatar"></span>
+    <div class="min-w-0">
+      <div id="profile-menu-name" class="font-display font-semibold text-sm truncate">Local Analyst</div>
+      <div class="text-[11px] text-muted">Stored only in this browser</div>
+    </div>
+  </div>
+  <button class="profile-menu-item" onclick="switchView('profile'); closeProfileMenu()">
+    <i class="fa-solid fa-user-gear w-4 text-center"></i><span>Account and Profile</span>
+  </button>
+  <button class="profile-menu-item" onclick="switchView('upload'); closeProfileMenu()">
+    <i class="fa-solid fa-house w-4 text-center"></i><span>Main Landing Page</span>
+  </button>
+  <button class="profile-menu-item" onclick="switchView(state.db ? 'dashboard' : 'upload'); closeProfileMenu()">
+    <i class="fa-solid fa-database w-4 text-center"></i><span>Current Session</span>
+  </button>
+</div>
+
+
+<div id="app" class="relative z-10 flex h-screen">
+
+  
+  <aside id="sidebar" class="hidden w-[260px] min-w-[260px] h-full border-r border-border flex flex-col bg-bg-alt/80 backdrop-blur-xl">
+    
+    <div class="px-5 py-5 border-b border-border flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center">
+        <i class="fa-solid fa-database text-accent text-sm"></i>
+      </div>
+      <span class="font-display font-bold text-base tracking-tight">DB Lens</span>
+    </div>
+
+    
+    <nav class="px-3 py-4 space-y-1 border-b border-border">
+      <div class="sidebar-item" data-view="upload" onclick="switchView('upload')">
+        <i class="fa-solid fa-house"></i><span>Landing Page</span>
+      </div>
+      <div class="sidebar-item active" data-view="dashboard" onclick="switchView('dashboard')">
+        <i class="fa-solid fa-chart-pie"></i><span>Dashboard</span>
+      </div>
+      <div class="sidebar-item" data-view="graph" onclick="switchView('graph')">
+        <i class="fa-solid fa-diagram-project"></i><span>Relationships</span>
+      </div>
+      <div class="sidebar-item" data-view="query" onclick="switchView('query')">
+        <i class="fa-solid fa-terminal"></i><span>Query Editor</span>
+      </div>
+      <div class="sidebar-item" data-view="charts" onclick="switchView('charts')">
+        <i class="fa-solid fa-chart-bar"></i><span>Charts</span>
+      </div>
+      <div class="sidebar-item" data-view="profile" onclick="switchView('profile')">
+        <i class="fa-solid fa-user-gear"></i><span>Account</span>
+      </div>
+    </nav>
+
+    
+    <div class="flex-1 overflow-y-auto px-3 py-3">
+      <div class="px-3 mb-2 text-[11px] font-semibold uppercase tracking-widest text-muted/60">Tables</div>
+      <div id="sidebar-tables" class="space-y-0.5"></div>
+    </div>
+
+    
+    <div class="px-4 py-3 border-t border-border">
+      <div id="db-info" class="text-[11px] text-muted/50 space-y-1"></div>
+    </div>
+  </aside>
+
+  
+  <main id="main-content" class="flex-1 relative overflow-hidden">
+
+    
+    <div id="view-upload" class="view-panel active flex items-center justify-center">
+      <div class="text-center max-w-lg w-full">
+        <div class="mb-8 fade-up" style="animation-delay:.1s">
+          <div class="inline-flex items-center gap-3 mb-4">
+            <div class="w-12 h-12 rounded-2xl bg-accent/15 flex items-center justify-center">
+              <i class="fa-solid fa-database text-accent text-xl"></i>
+            </div>
+            <h1 class="font-display text-3xl font-bold tracking-tight">DB Lens</h1>
+          </div>
+          <p class="text-muted text-sm max-w-sm mx-auto">Explore SQLite databases with interactive visualizations, relationship graphs, and a modern interface.</p>
+        </div>
+
+        <div id="profile-setup-prompt" class="mb-6 fade-up" style="animation-delay:.18s"></div>
+
+        <div class="drop-zone p-12 mb-6 fade-up" style="animation-delay:.25s" id="drop-zone"
+             onclick="document.getElementById('file-input').click()">
+          <div class="drop-icon mb-4">
+            <i class="fa-solid fa-cloud-arrow-up text-4xl text-accent/60"></i>
+          </div>
+          <p class="font-display font-semibold text-lg mb-1">Drop your SQLite file here</p>
+          <p class="text-muted text-sm">or click to browse</p>
+          <div class="flex items-center justify-center gap-2 mt-4">
+            <span class="badge bg-accent/10 text-accent/80">.db</span>
+            <span class="badge bg-accent/10 text-accent/80">.sqlite</span>
+            <span class="badge bg-accent/10 text-accent/80">.sqlite3</span>
+          </div>
+        </div>
+        <input type="file" id="file-input" accept=".db,.sqlite,.sqlite3" class="hidden">
+
+        <div class="fade-up" style="animation-delay:.4s">
+          <button onclick="loadSampleDatabase()" class="text-sm text-muted hover:text-accent transition-colors cursor-pointer">
+            <i class="fa-solid fa-flask mr-1.5"></i>Try with a sample database
+          </button>
+        </div>
+
+        <div id="upload-saved-databases" class="mt-8 text-left fade-up" style="animation-delay:.5s"></div>
+      </div>
+    </div>
+
+    
+    <div id="view-dashboard" class="view-panel">
+      <div id="dashboard-content"></div>
+    </div>
+
+    
+    <div id="view-graph" class="view-panel" style="padding:0;overflow:hidden">
+      <div id="graph-container" class="w-full h-full relative">
+        <div class="graph-tooltip" id="graph-tooltip"></div>
+        <div id="graph-legend" class="absolute bottom-5 left-5 glass-sm px-4 py-3 text-xs text-muted z-10 hidden"></div>
+        <div id="graph-empty" class="absolute inset-0 flex items-center justify-center text-muted text-sm hidden">
+          <div class="text-center"><i class="fa-solid fa-diagram-project text-3xl mb-3 opacity-30"></i><p>No tables with foreign key relationships found</p></div>
+        </div>
+      </div>
+    </div>
+
+    
+    <div id="view-table" class="view-panel" style="padding:0">
+      <div id="table-content" class="h-full flex flex-col"></div>
+    </div>
+
+    
+    <div id="view-query" class="view-panel" style="padding:0;display:flex;flex-direction:column">
+      <div id="query-content" class="flex-1 flex flex-col overflow-hidden"></div>
+    </div>
+
+    
+    <div id="view-charts" class="view-panel">
+      <div id="charts-content"></div>
+    </div>
+
+    
+    <div id="view-profile" class="view-panel">
+      <div id="profile-content"></div>
+    </div>
+
+    
+    <div id="loading-overlay" class="absolute inset-0 bg-bg/90 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+      <div class="text-center">
+        <div class="spinner mx-auto mb-4"></div>
+        <p class="text-sm text-muted">Parsing database...</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+
+<div id="inspector-overlay" class="inspector-overlay" onclick="closeInspector()"></div>
+
+
+<div id="inspector-panel" class="inspector-panel">
+  <div id="inspector-content"></div>
+</div>
+
+
+<div id="toast-container" class="fixed top-5 right-5 z-[200] space-y-2 pointer-events-none"></div>
+
+<script>
+
+
+
+const state = {
+  db: null,
+  SQL: null,
+  dbFileName: '',
+  dbFileSize: 0,
+  currentDbId: null,
+  currentDbMeta: null,
+  savedDatabases: [],
+  storageReady: false,
+  storageUsage: null,
+  profile: null,
+  tables: [],
+  tableInfo: {},     
+  fkMap: {},         
+  currentView: 'upload',
+  currentTable: null,
+  tableData: null,
+  tableColumns: [],
+  sortCol: null,
+  sortDir: 'asc',
+  filterText: '',
+  page: 1,
+  pageSize: 50,
+  selectedRow: null,
+  totalRows: 0,
+  chartInstance: null,
+  graphSim: null,
+  navHistory: [],
+};
+
+const CLIENT_DB = {
+  name: 'db-lens-client-store',
+  version: 1,
+  metaStore: 'databaseMeta',
+  fileStore: 'databaseFiles'
+};
+const STORAGE_KEYS = {
+  profile: 'dbLens.profile.v1',
+  currentDbId: 'dbLens.currentDbId.v1'
+};
+let clientStore = null;
+
+const DEFAULT_AVATARS = [
+  { id: 'amber-db', label: 'Amber DB', icon: 'fa-database', color: '#FCD34D', background: 'linear-gradient(135deg,rgba(232,168,56,.42),rgba(20,184,166,.18))' },
+  { id: 'teal-graph', label: 'Teal Graph', icon: 'fa-diagram-project', color: '#5EEAD4', background: 'linear-gradient(135deg,rgba(20,184,166,.42),rgba(6,182,212,.18))' },
+  { id: 'rose-query', label: 'Rose Query', icon: 'fa-terminal', color: '#FDA4AF', background: 'linear-gradient(135deg,rgba(244,63,94,.36),rgba(232,168,56,.16))' },
+  { id: 'green-table', label: 'Green Table', icon: 'fa-table-cells-large', color: '#86EFAC', background: 'linear-gradient(135deg,rgba(34,197,94,.36),rgba(6,182,212,.16))' },
+  { id: 'blue-chart', label: 'Blue Chart', icon: 'fa-chart-simple', color: '#7DD3FC', background: 'linear-gradient(135deg,rgba(14,165,233,.38),rgba(232,168,56,.14))' },
+  { id: 'pink-spark', label: 'Pink Spark', icon: 'fa-bolt', color: '#F9A8D4', background: 'linear-gradient(135deg,rgba(236,72,153,.34),rgba(20,184,166,.16))' }
+];
+
+
+const NODE_COLORS = [
+  '#E8A838','#10B981','#EF4444','#06B6D4','#F97316',
+  '#84CC16','#EC4899','#14B8A6','#F59E0B','#22D3EE',
+  '#FB7185','#A3E635','#D97706','#0D9488','#0284C7','#DC2626'
+];
+const tableColorMap = {};
+let colorIdx = 0;
+function getTableColor(t) {
+  if (!tableColorMap[t]) { tableColorMap[t] = NODE_COLORS[colorIdx % NODE_COLORS.length]; colorIdx++; }
+  return tableColorMap[t];
+}
+
+
+
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+function showToast(msg, type = 'info') {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  const icons = { success: 'fa-check-circle', error: 'fa-circle-xmark', info: 'fa-circle-info' };
+  t.innerHTML = `<i class="fa-solid ${icons[type] || icons.info}"></i><span>${msg}</span>`;
+  c.appendChild(t);
+  setTimeout(() => { t.classList.add('toast-out'); setTimeout(() => t.remove(), 300); }, 3000);
+}
+
+function animateCounter(el, target, dur = 800) {
+  if (target === 0) { el.textContent = '0'; return; }
+  let start = 0;
+  const inc = target / (dur / 16);
+  const timer = setInterval(() => {
+    start += inc;
+    if (start >= target) { el.textContent = target.toLocaleString(); clearInterval(timer); }
+    else el.textContent = Math.floor(start).toLocaleString();
+  }, 16);
+}
+
+function escapeHtml(s) {
+  if (s === null || s === undefined) return '<span class="text-muted/40 italic">NULL</span>';
+  const str = String(s);
+  if (str.length > 200) return escapeHtml(str.slice(0, 200)) + '<span class="text-muted/40">...</span>';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function isJsonString(s) {
+  if (typeof s !== 'string') return false;
+  try { JSON.parse(s); return true; } catch { return false; }
+}
+
+function formatDate(iso) {
+  if (!iso) return 'Never';
+  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
+}
+
+function getInitials(name) {
+  return (name || 'Local Analyst').split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0].toUpperCase()).join('') || 'LA';
+}
+
+function selectedDefaultAvatar() {
+  return DEFAULT_AVATARS.find(a => a.id === state.profile?.avatarId) || DEFAULT_AVATARS[0];
+}
+
+function defaultAvatarStyle(avatar = selectedDefaultAvatar()) {
+  return `background:${avatar.background};color:${avatar.color}`;
+}
+
+function defaultAvatarInnerHTML() {
+  const avatar = selectedDefaultAvatar();
+  return `<i class="fa-solid ${avatar.icon}" aria-hidden="true"></i>`;
+}
+
+function avatarHTML(sizeClass = '') {
+  const avatar = state.profile?.avatarDataUrl;
+  return avatar ? `<span class="avatar ${sizeClass}"><img src="${avatar}" alt=""></span>` : `<span class="avatar ${sizeClass}" style="${defaultAvatarStyle()}">${defaultAvatarInnerHTML()}</span>`;
+}
+
+function stableId() {
+  if (crypto.randomUUID) return `db_${crypto.randomUUID()}`;
+  return `db_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+async function checksumBuffer(buffer) {
+  if (!crypto.subtle) return '';
+  const hash = await crypto.subtle.digest('SHA-256', buffer.slice(0));
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function buildSchemaPreview(tableInfo) {
+  return Object.entries(tableInfo).slice(0, 8).map(([name, info]) => ({
+    name,
+    rowCount: info.rowCount,
+    columns: info.columns.slice(0, 8).map(c => ({ name: c.name, type: c.type || 'ANY', pk: !!c.pk })),
+    foreignKeys: info.fks.length
+  }));
+}
+
+function totalRowsFromInfo(tableInfo) {
+  return Object.values(tableInfo || {}).reduce((sum, info) => sum + (info.rowCount || 0), 0);
+}
+
+function storageRatio() {
+  if (!state.storageUsage?.quota) return 0;
+  return Math.min(100, Math.round((state.storageUsage.usage / state.storageUsage.quota) * 100));
+}
+
+function updateStorageEstimate() {
+  if (!navigator.storage?.estimate) return Promise.resolve();
+  return navigator.storage.estimate().then(estimate => {
+    state.storageUsage = estimate;
+  }).catch(() => {});
+}
+
+async function initSQL() {
+  try {
+    state.SQL = await initSqlJs({ locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}` });
+  } catch (e) {
+    showToast('Failed to initialize SQL engine. Please reload.', 'error');
+    console.error(e);
+  }
+}
+
+function defaultProfile() {
+  return {
+    displayName: 'Local Analyst',
+    avatarDataUrl: '',
+    avatarId: DEFAULT_AVATARS[0].id,
+    preferences: {
+      reopenLast: true,
+      autoSaveUploads: true,
+      confirmDelete: true,
+      compactRows: false
+    }
+  };
+}
+
+function loadProfile() {
+  try {
+    state.profile = { ...defaultProfile(), ...(JSON.parse(localStorage.getItem(STORAGE_KEYS.profile)) || {}) };
+    state.profile.preferences = { ...defaultProfile().preferences, ...(state.profile.preferences || {}) };
+    if (!DEFAULT_AVATARS.some(a => a.id === state.profile.avatarId)) state.profile.avatarId = DEFAULT_AVATARS[0].id;
+  } catch {
+    state.profile = defaultProfile();
+  }
+}
+
+function saveProfile() {
+  try {
+    localStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(state.profile));
+    updateProfileChrome();
+    renderProfileSetupPrompt();
+  } catch (e) {
+    showToast('Profile storage is full. Try a smaller avatar image.', 'error');
+  }
+}
+
+function updateProfileChrome() {
+  const name = state.profile?.displayName || 'Local Analyst';
+  const selectedAvatar = selectedDefaultAvatar();
+  document.getElementById('profile-button-name').textContent = name;
+  document.getElementById('profile-menu-name').textContent = name;
+  ['profile-button-avatar', 'profile-menu-avatar'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.background = state.profile?.avatarDataUrl ? '' : selectedAvatar.background;
+    el.style.color = state.profile?.avatarDataUrl ? '' : selectedAvatar.color;
+    el.innerHTML = state.profile?.avatarDataUrl ? `<img src="${state.profile.avatarDataUrl}" alt="">` : defaultAvatarInnerHTML();
+  });
+}
+
+function toggleProfileMenu() {
+  document.getElementById('profile-menu').classList.toggle('hidden');
+}
+
+function closeProfileMenu() {
+  document.getElementById('profile-menu').classList.add('hidden');
+}
+
+document.addEventListener('click', e => {
+  const menu = document.getElementById('profile-menu');
+  const button = document.getElementById('profile-button');
+  if (menu && button && !menu.contains(e.target) && !button.contains(e.target)) closeProfileMenu();
+});
+
+function openClientStore() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(CLIENT_DB.name, CLIENT_DB.version);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(CLIENT_DB.metaStore)) {
+        const meta = db.createObjectStore(CLIENT_DB.metaStore, { keyPath: 'id' });
+        meta.createIndex('uploadedAt', 'uploadedAt');
+        meta.createIndex('lastOpenedAt', 'lastOpenedAt');
+      }
+      if (!db.objectStoreNames.contains(CLIENT_DB.fileStore)) {
+        db.createObjectStore(CLIENT_DB.fileStore, { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = () => {
+      clientStore = req.result;
+      clientStore.onversionchange = () => clientStore.close();
+      state.storageReady = true;
+      resolve(clientStore);
+    };
+    req.onerror = () => reject(req.error);
+    req.onblocked = () => reject(new Error('Storage upgrade is blocked by another open DB Lens tab.'));
+  });
+}
+
+function txStore(storeName, mode = 'readonly') {
+  return clientStore.transaction(storeName, mode).objectStore(storeName);
+}
+
+function requestAsPromise(req) {
+  return new Promise((resolve, reject) => {
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function transactionComplete(tx) {
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error || new Error('Storage transaction aborted.'));
+  });
+}
+
+async function refreshSavedDatabases() {
+  if (!state.storageReady) return;
+  const all = await requestAsPromise(txStore(CLIENT_DB.metaStore).getAll());
+  state.savedDatabases = all.sort((a, b) => new Date(b.lastOpenedAt || b.uploadedAt) - new Date(a.lastOpenedAt || a.uploadedAt));
+  await updateStorageEstimate();
+  renderUploadSavedDatabases();
+  if (state.currentView === 'dashboard') renderDashboard();
+  if (state.currentView === 'profile') renderProfile();
+}
+
+async function saveDatabaseFile(buffer, details) {
+  if (!state.storageReady || !state.profile.preferences.autoSaveUploads) return null;
+  const now = new Date().toISOString();
+  const id = details.id || stableId();
+  const metadata = {
+    id,
+    filename: details.filename,
+    size: details.size,
+    uploadedAt: details.uploadedAt || now,
+    lastOpenedAt: now,
+    tableCount: state.tables.length,
+    totalRows: totalRowsFromInfo(state.tableInfo),
+    schemaPreview: buildSchemaPreview(state.tableInfo),
+    checksum: await checksumBuffer(buffer)
+  };
+
+  const tx = clientStore.transaction([CLIENT_DB.metaStore, CLIENT_DB.fileStore], 'readwrite');
+  tx.objectStore(CLIENT_DB.metaStore).put(metadata);
+  tx.objectStore(CLIENT_DB.fileStore).put({ id, fileData: buffer });
+  await transactionComplete(tx);
+
+  state.currentDbId = id;
+  state.currentDbMeta = metadata;
+  localStorage.setItem(STORAGE_KEYS.currentDbId, id);
+  await refreshSavedDatabases();
+  return metadata;
+}
+
+async function touchSavedDatabase(id) {
+  const meta = await requestAsPromise(txStore(CLIENT_DB.metaStore).get(id));
+  if (!meta) return null;
+  meta.lastOpenedAt = new Date().toISOString();
+  await requestAsPromise(txStore(CLIENT_DB.metaStore, 'readwrite').put(meta));
+  return meta;
+}
+
+async function loadSavedDatabase(id, options = {}) {
+  if (!state.storageReady) {
+    showToast('Browser database storage is not available.', 'error');
+    return;
+  }
+  document.getElementById('loading-overlay').classList.remove('hidden');
+  try {
+    const tx = clientStore.transaction([CLIENT_DB.metaStore, CLIENT_DB.fileStore], 'readonly');
+    const metaReq = tx.objectStore(CLIENT_DB.metaStore).get(id);
+    const fileReq = tx.objectStore(CLIENT_DB.fileStore).get(id);
+    const [meta, file] = await Promise.all([requestAsPromise(metaReq), requestAsPromise(fileReq)]);
+    if (!meta || !file?.fileData) throw new Error('Saved database record is incomplete.');
+    if (meta.checksum) {
+      const currentChecksum = await checksumBuffer(file.fileData);
+      if (currentChecksum && currentChecksum !== meta.checksum) throw new Error('Saved database checksum does not match.');
+    }
+    const db = new state.SQL.Database(new Uint8Array(file.fileData));
+    const touchedMeta = await touchSavedDatabase(id) || meta;
+    await loadDatabase(db, { id, meta: touchedMeta, filename: meta.filename, size: meta.size });
+    await refreshSavedDatabases();
+    if (!options.silent) showToast(`Reopened ${meta.filename}`, 'success');
+  } catch (e) {
+    document.getElementById('loading-overlay').classList.add('hidden');
+    localStorage.removeItem(STORAGE_KEYS.currentDbId);
+    showToast('Could not reopen saved database: ' + e.message, 'error');
+    console.error(e);
+  }
+}
+
+async function deleteSavedDatabase(id) {
+  const dbMeta = state.savedDatabases.find(d => d.id === id);
+  if (!dbMeta) return;
+  if (state.profile.preferences.confirmDelete && !confirm(`Delete "${dbMeta.filename}" from this browser?`)) return;
+  const tx = clientStore.transaction([CLIENT_DB.metaStore, CLIENT_DB.fileStore], 'readwrite');
+  tx.objectStore(CLIENT_DB.metaStore).delete(id);
+  tx.objectStore(CLIENT_DB.fileStore).delete(id);
+  await transactionComplete(tx);
+  if (state.currentDbId === id) resetCurrentSession();
+  await refreshSavedDatabases();
+  showToast('Saved database deleted', 'success');
+}
+
+function resetCurrentSession() {
+  try { state.db?.close?.(); } catch {}
+  state.db = null;
+  state.dbFileName = '';
+  state.dbFileSize = 0;
+  state.currentDbId = null;
+  state.currentDbMeta = null;
+  state.tables = [];
+  state.tableInfo = {};
+  state.fkMap = {};
+  localStorage.removeItem(STORAGE_KEYS.currentDbId);
+  document.getElementById('sidebar').classList.add('hidden');
+  document.getElementById('sidebar').style.display = '';
+  switchView('upload', false);
+}
+
+function setupFileHandlers() {
+  const dropZone = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-input');
+
+  ['dragenter','dragover'].forEach(ev => {
+    dropZone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); dropZone.classList.add('drag-over'); });
+  });
+  ['dragleave','drop'].forEach(ev => {
+    dropZone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); dropZone.classList.remove('drag-over'); });
+  });
+  dropZone.addEventListener('drop', e => {
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  });
+  fileInput.addEventListener('change', e => {
+    if (e.target.files[0]) handleFile(e.target.files[0]);
+  });
+}
+
+async function handleFile(file) {
+  const validExts = ['.db', '.sqlite', '.sqlite3'];
+  const ext = '.' + file.name.split('.').pop().toLowerCase();
+  if (!validExts.includes(ext)) {
+    showToast('Invalid file type. Please upload a SQLite database.', 'error');
+    return;
+  }
+  state.dbFileName = file.name;
+  state.dbFileSize = file.size;
+
+  document.getElementById('loading-overlay').classList.remove('hidden');
+
+  try {
+    const buffer = await file.arrayBuffer();
+    const db = new state.SQL.Database(new Uint8Array(buffer));
+    await loadDatabase(db, { filename: file.name, size: file.size });
+    if (state.profile.preferences.autoSaveUploads) {
+      try {
+        await saveDatabaseFile(buffer, { filename: file.name, size: file.size });
+        showToast('Database loaded and saved locally', 'success');
+      } catch (storageError) {
+        state.currentDbId = null;
+        state.currentDbMeta = null;
+        localStorage.removeItem(STORAGE_KEYS.currentDbId);
+        showToast('Database opened, but browser storage is full or unavailable.', 'error');
+        console.error(storageError);
+      }
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.currentDbId);
+      showToast('Database loaded for this session', 'success');
+    }
+  } catch (e) {
+    document.getElementById('loading-overlay').classList.add('hidden');
+    showToast('Failed to parse database: ' + e.message, 'error');
+    console.error(e);
+  }
+}
+
+function extractSchema(db) {
+  const tables = [];
+  const tableInfo = {};
+  const fkMap = {};
+
+  const rows = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name");
+  if (rows.length > 0) {
+    rows[0].values.forEach(r => tables.push(r[0]));
+  }
+
+  tables.forEach(t => {
+    const colRows = db.exec(`PRAGMA table_info("${t}")`);
+    const columns = colRows.length > 0 ? colRows[0].values.map(r => ({
+      cid: r[0], name: r[1], type: r[2], notnull: r[3], default: r[4], pk: r[5]
+    })) : [];
+
+    const countRows = db.exec(`SELECT COUNT(*) FROM "${t}"`);
+    const rowCount = countRows.length > 0 ? countRows[0].values[0][0] : 0;
+
+    const fkRows = db.exec(`PRAGMA foreign_key_list("${t}")`);
+    const fks = fkRows.length > 0 ? fkRows[0].values.map(r => ({
+      id: r[0], from: r[3], to: r[4], table: r[2]
+    })) : [];
+
+    tableInfo[t] = { columns, rowCount, fks };
+    fkMap[t] = fks;
+  });
+
+  return { tables, tableInfo, fkMap };
+}
+
+async function loadDatabase(db, options = {}) {
+  if (state.db && state.db !== db) {
+    try { state.db.close?.(); } catch {}
+  }
+  state.db = db;
+  state.dbFileName = options.filename || options.meta?.filename || state.dbFileName;
+  state.dbFileSize = options.size ?? options.meta?.size ?? state.dbFileSize;
+  state.currentDbId = options.id || options.meta?.id || null;
+  state.currentDbMeta = options.meta || null;
+  state.currentTable = null;
+  state.sortCol = null;
+  state.sortDir = 'asc';
+  state.filterText = '';
+  state.page = 1;
+  state.selectedRow = null;
+  state.navHistory = [];
+  colorIdx = 0;
+  Object.keys(tableColorMap).forEach(k => delete tableColorMap[k]);
+
+  const { tables, tableInfo, fkMap } = extractSchema(db);
+  state.tables = tables;
+  state.tableInfo = tableInfo;
+  state.fkMap = fkMap;
+
+  buildSidebar();
+  updateDBInfo();
+  switchView('dashboard');
+  document.getElementById('loading-overlay').classList.add('hidden');
+  document.getElementById('sidebar').classList.remove('hidden');
+  document.getElementById('sidebar').style.display = 'flex';
+  if (state.currentDbId) localStorage.setItem(STORAGE_KEYS.currentDbId, state.currentDbId);
+  else localStorage.removeItem(STORAGE_KEYS.currentDbId);
+}
+
+function buildSidebar() {
+  const container = document.getElementById('sidebar-tables');
+  container.innerHTML = '';
+  state.tables.forEach((t, i) => {
+    const info = state.tableInfo[t];
+    const div = document.createElement('div');
+    div.className = 'table-item';
+    div.dataset.table = t;
+    div.onclick = () => openTable(t);
+    div.innerHTML = `
+      <div class="flex items-center gap-2 min-w-0">
+        <div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:${getTableColor(t)}"></div>
+        <span class="truncate">${t}</span>
+      </div>
+      <span class="table-count flex-shrink-0">${info.rowCount.toLocaleString()}</span>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function updateDBInfo() {
+  const totalRows = state.tables.reduce((s, t) => s + state.tableInfo[t].rowCount, 0);
+  const totalFks = state.tables.reduce((s, t) => s + state.fkMap[t].length, 0);
+  document.getElementById('db-info').innerHTML = `
+    <div class="flex items-center gap-2"><i class="fa-solid fa-file text-accent/50"></i>${state.dbFileName || 'Sample DB'}</div>
+    <div>${formatSize(state.dbFileSize)} &middot; ${state.tables.length} tables &middot; ${totalRows.toLocaleString()} rows</div>
+  `;
+}
+
+function switchView(view, pushHistory = true) {
+  if (pushHistory && state.currentView !== 'upload') {
+    state.navHistory.push({ view: state.currentView, table: state.currentTable });
+  }
+  state.currentView = view;
+
+  document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById('view-' + view);
+  if (panel) panel.classList.add('active');
+
+  document.querySelectorAll('.sidebar-item').forEach(s => {
+    s.classList.toggle('active', s.dataset.view === view);
+  });
+  document.querySelectorAll('.table-item').forEach(s => {
+    s.classList.toggle('active', view === 'table' && s.dataset.table === state.currentTable);
+  });
+
+  if (view === 'dashboard') renderDashboard();
+  else if (view === 'graph') renderGraph();
+  else if (view === 'table') renderTable();
+  else if (view === 'query') renderQuery();
+  else if (view === 'charts') renderCharts();
+  else if (view === 'profile') renderProfile();
+  else if (view === 'upload') {
+    renderProfileSetupPrompt();
+    renderUploadSavedDatabases();
+  }
+}
+
+function goBack() {
+  if (state.navHistory.length === 0) return;
+  const prev = state.navHistory.pop();
+  state.currentTable = prev.table;
+  switchView(prev.view, false);
+}
+
+function savedDatabasesHTML(context = 'dashboard') {
+  const isUpload = context === 'upload';
+  const storageText = state.storageUsage?.quota
+    ? `${formatSize(state.storageUsage.usage || 0)} of ${formatSize(state.storageUsage.quota)} used`
+    : 'Storage estimate unavailable';
+
+  if (!state.storageReady) {
+    return `
+      <div class="glass p-5">
+        <div class="flex items-center gap-3 text-rose-200">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <div>
+            <div class="font-display font-semibold text-sm">Local database storage is unavailable</div>
+            <div class="text-xs text-muted mt-1">Your current file can still be opened, but saved database history requires IndexedDB.</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  if (state.savedDatabases.length === 0) {
+    return `
+      <div class="glass p-5 ${isUpload ? 'max-w-lg mx-auto' : ''}">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-cyan-500/12 flex items-center justify-center"><i class="fa-solid fa-box-archive text-cyan-300"></i></div>
+          <div>
+            <div class="font-display font-semibold text-sm">No saved databases yet</div>
+            <div class="text-xs text-muted mt-1">Uploaded SQLite files are stored in this browser with IndexedDB when auto-save is enabled.</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  const cards = state.savedDatabases.map(db => {
+    const active = state.currentDbId === db.id;
+    const tables = (db.schemaPreview || []).slice(0, 4).map(t => t.name).join(', ');
+    return `
+      <div class="saved-db-card glass-sm p-4">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 mb-1">
+              <i class="fa-solid fa-database text-accent/80 text-xs"></i>
+              <span class="font-display font-semibold text-sm truncate">${escapeHtml(db.filename)}</span>
+              ${active ? '<span class="session-pill">Open</span>' : ''}
+            </div>
+            <div class="text-[11px] text-muted">${formatSize(db.size)} &middot; ${db.tableCount || 0} tables &middot; ${(db.totalRows || 0).toLocaleString()} rows</div>
+            <div class="text-[11px] text-muted/70 mt-1">Uploaded ${formatDate(db.uploadedAt)}</div>
+            ${tables ? `<div class="text-[11px] text-muted/60 mt-2 truncate">Schema: ${escapeHtml(tables)}</div>` : ''}
+          </div>
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <button class="icon-btn" title="Reopen database" onclick="loadSavedDatabase('${db.id}')"><i class="fa-solid fa-folder-open"></i></button>
+            <button class="icon-btn danger" title="Delete saved database" onclick="deleteSavedDatabase('${db.id}')"><i class="fa-solid fa-trash"></i></button>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  return `
+    <div>
+      <div class="flex items-end justify-between gap-4 mb-3">
+        <div>
+          <h3 class="font-display text-lg font-semibold">${isUpload ? 'Saved Databases' : 'Saved Databases'}</h3>
+          <p class="text-xs text-muted">${state.savedDatabases.length} stored locally &middot; ${storageText}</p>
+        </div>
+        ${state.storageUsage?.quota ? `
+          <div class="hidden sm:block w-32 h-1.5 rounded-full bg-white/10 overflow-hidden">
+            <div class="h-full bg-accent" style="width:${storageRatio()}%"></div>
+          </div>` : ''}
+      </div>
+      <div class="grid grid-cols-1 ${isUpload ? '' : 'xl:grid-cols-2'} gap-3">${cards}</div>
+    </div>`;
+}
+
+function renderUploadSavedDatabases() {
+  const el = document.getElementById('upload-saved-databases');
+  if (!el) return;
+  el.innerHTML = savedDatabasesHTML('upload');
+}
+
+function renderProfileSetupPrompt() {
+  const el = document.getElementById('profile-setup-prompt');
+  if (!el || !state.profile) return;
+  const hasName = state.profile.displayName && state.profile.displayName !== defaultProfile().displayName;
+  el.innerHTML = `
+    <button type="button" class="glass-sm w-full p-4 flex items-center justify-between gap-4 text-left hover:bg-white/[0.06] transition-colors" onclick="switchView('profile')">
+      <span class="flex items-center gap-3 min-w-0">
+        ${avatarHTML()}
+        <span class="min-w-0">
+          <span class="block font-display font-semibold text-sm truncate">${hasName ? escapeHtml(state.profile.displayName) : 'Add your name and choose an avatar'}</span>
+          <span class="block text-xs text-muted mt-0.5">${hasName ? 'Choose an avatar for your local account' : 'Set up your local account profile'}</span>
+        </span>
+      </span>
+      <i class="fa-solid fa-user-pen text-accent flex-shrink-0"></i>
+    </button>`;
+}
+
+function renderCurrentSessionHTML() {
+  const dbName = state.db ? state.dbFileName : 'No database open';
+  const openedFrom = state.currentDbId ? 'Saved database' : (state.db ? 'Temporary upload' : 'Waiting for upload');
+  return `
+    <div class="grid grid-cols-1 lg:grid-cols-[1.1fr_.9fr] gap-4 mb-8">
+      <div class="glass p-5 fade-up">
+        <div class="flex items-center justify-between gap-4">
+          <div class="flex items-center gap-4 min-w-0">
+            ${avatarHTML('avatar-lg')}
+            <div class="min-w-0">
+              <div class="text-xs text-muted uppercase tracking-widest font-semibold mb-1">Current Session</div>
+              <h2 class="font-display text-xl font-bold truncate">${escapeHtml(dbName)}</h2>
+              <p class="text-xs text-muted mt-1">${openedFrom} &middot; ${formatSize(state.dbFileSize || 0)} &middot; private to this browser</p>
+            </div>
+          </div>
+          <button class="icon-btn" title="Account settings" onclick="switchView('profile')"><i class="fa-solid fa-user-gear"></i></button>
+        </div>
+      </div>
+      <div class="glass p-5 fade-up" style="animation-delay:.05s">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <div class="text-xs text-muted uppercase tracking-widest font-semibold">Local Storage</div>
+            <div class="font-display font-semibold text-sm mt-1">IndexedDB file vault</div>
+          </div>
+          <span class="session-pill"><i class="fa-solid fa-lock"></i>Client-side</span>
+        </div>
+        <div class="text-xs text-muted">${state.storageUsage?.quota ? `${formatSize(state.storageUsage.usage || 0)} used of ${formatSize(state.storageUsage.quota)}` : 'Storage estimate unavailable'}</div>
+        <div class="h-1.5 rounded-full bg-white/10 overflow-hidden mt-3"><div class="h-full bg-accent" style="width:${storageRatio()}%"></div></div>
+      </div>
+    </div>`;
+}
+
+function avatarChoicesHTML() {
+  const selected = selectedDefaultAvatar().id;
+  return DEFAULT_AVATARS.map(avatar => `
+    <button type="button" class="avatar-choice ${avatar.id === selected && !state.profile.avatarDataUrl ? 'selected' : ''}" style="${defaultAvatarStyle(avatar)}" title="${avatar.label}" aria-label="Choose ${avatar.label} avatar" onclick="selectDefaultAvatar('${avatar.id}')">
+      <i class="fa-solid ${avatar.icon}" aria-hidden="true"></i>
+    </button>`).join('');
+}
+
+function selectDefaultAvatar(id) {
+  if (!DEFAULT_AVATARS.some(a => a.id === id)) return;
+  state.profile.avatarId = id;
+  state.profile.avatarDataUrl = '';
+  saveProfile();
+  renderProfile();
+  showToast('Avatar selected', 'success');
+}
+
+function renderProfile() {
+  const prefs = state.profile.preferences;
+  document.getElementById('profile-content').innerHTML = `
+    <div class="mb-6 fade-up flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+      <div>
+        <h2 class="font-display text-2xl font-bold tracking-tight mb-1">Account and Profile</h2>
+        <p class="text-muted text-sm">Add your name and choose an avatar.</p>
+      </div>
+      <button type="button" class="px-3 py-2 rounded-lg bg-white/[0.05] text-muted text-xs font-semibold hover:text-text transition-colors self-start sm:self-auto" onclick="switchView('upload')">
+        <i class="fa-solid fa-house mr-1.5"></i>Main Landing Page
+      </button>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-[380px_1fr] gap-5">
+      <div class="glass p-5 fade-up">
+        <div class="flex items-center gap-4 mb-5">
+          ${avatarHTML('avatar-lg')}
+          <div class="min-w-0">
+            <div class="font-display font-semibold text-lg truncate">${escapeHtml(state.profile.displayName)}</div>
+            <div class="text-xs text-muted">Client-side profile</div>
+          </div>
+        </div>
+        <label class="block text-xs text-muted uppercase tracking-widest font-semibold mb-2" for="profile-display-name">Your name</label>
+        <input id="profile-display-name" class="form-field mb-4" value="${escapeHtml(state.profile.displayName)}" maxlength="48">
+        <div class="mb-4">
+          <div class="text-xs text-muted uppercase tracking-widest font-semibold mb-2">Choose an avatar</div>
+          <div class="grid grid-cols-3 gap-2">
+            ${avatarChoicesHTML()}
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <input type="file" id="profile-avatar-input" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden">
+          <button class="px-3 py-2 rounded-lg bg-accent text-bg text-xs font-bold hover:bg-accent-hover transition-colors" onclick="document.getElementById('profile-avatar-input').click()">
+            <i class="fa-solid fa-image mr-1.5"></i>Upload image
+          </button>
+          <button class="px-3 py-2 rounded-lg bg-white/[0.05] text-muted text-xs font-semibold hover:text-text transition-colors" onclick="removeAvatar()">
+            Clear upload
+          </button>
+        </div>
+      </div>
+
+      <div class="space-y-5">
+        <div class="glass p-5 fade-up" style="animation-delay:.05s">
+          <h3 class="font-display text-lg font-semibold mb-4">Profile Preferences</h3>
+          ${preferenceRow('reopenLast', 'Reopen last database', 'Restore your last saved database after reloads.', prefs.reopenLast)}
+          ${preferenceRow('autoSaveUploads', 'Auto-save uploads', 'Store validated SQLite files in IndexedDB for quick reopening.', prefs.autoSaveUploads)}
+          ${preferenceRow('confirmDelete', 'Confirm before deletion', 'Ask before removing saved files from browser storage.', prefs.confirmDelete)}
+          ${preferenceRow('compactRows', 'Compact table rows', 'Use denser row spacing when browsing table data.', prefs.compactRows)}
+        </div>
+
+        <div class="glass p-5 fade-up" style="animation-delay:.1s">
+          ${savedDatabasesHTML('profile')}
+        </div>
+      </div>
+    </div>`;
+
+  const nameInput = document.getElementById('profile-display-name');
+  nameInput.addEventListener('input', e => {
+    state.profile.displayName = e.target.value.trim() || 'Local Analyst';
+    saveProfile();
+    renderProfileSetupPrompt();
+  });
+  document.getElementById('profile-avatar-input').addEventListener('change', handleAvatarUpload);
+}
+
+function preferenceRow(key, title, description, checked) {
+  return `
+    <button class="w-full flex items-center justify-between gap-4 py-3 border-b border-border last:border-b-0 text-left" onclick="togglePreference('${key}')">
+      <span>
+        <span class="block text-sm font-semibold">${title}</span>
+        <span class="block text-xs text-muted mt-0.5">${description}</span>
+      </span>
+      <span class="pref-toggle ${checked ? 'active' : ''}"></span>
+    </button>`;
+}
+
+function togglePreference(key) {
+  state.profile.preferences[key] = !state.profile.preferences[key];
+  if (key === 'compactRows') state.pageSize = state.profile.preferences.compactRows ? 100 : 50;
+  saveProfile();
+  renderProfile();
+}
+
+function handleAvatarUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 1024 * 1024 * 2) {
+    showToast('Choose an avatar under 2 MB for local profile storage.', 'error');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    state.profile.avatarDataUrl = reader.result;
+    saveProfile();
+    renderProfile();
+    showToast('Profile picture updated', 'success');
+  };
+  reader.onerror = () => showToast('Could not read that image.', 'error');
+  reader.readAsDataURL(file);
+}
+
+function removeAvatar() {
+  state.profile.avatarDataUrl = '';
+  saveProfile();
+  renderProfile();
+  showToast('Using selected default avatar', 'success');
+}
+
+function quoteIdent(name) {
+  return '"' + String(name).replace(/"/g, '""') + '"';
+}
+
+function escapeSqlText(value) {
+  return String(value).replace(/'/g, "''");
+}
+
+function jsArg(value) {
+  return JSON.stringify(value).replace(/</g, '\\u003c');
+}
+
+function renderDashboard() {
+  if (!state.db) {
+    switchView('upload', false);
+    return;
+  }
+  const totalRows = state.tables.reduce((s, t) => s + state.tableInfo[t].rowCount, 0);
+  const totalFks = state.tables.reduce((s, t) => s + state.fkMap[t].length, 0);
+  const totalCols = state.tables.reduce((s, t) => s + state.tableInfo[t].columns.length, 0);
+  let indexCount = 0;
+  try {
+    const idxRows = state.db.exec("SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name NOT LIKE 'sqlite_%'");
+    if (idxRows.length > 0) indexCount = idxRows[0].values[0][0];
+  } catch {}
+  const tableCards = state.tables.map((t, i) => {
+    const info = state.tableInfo[t];
+    const columns = info.columns.slice(0, 6).map(c => `<span class="badge bg-white/[0.05] text-muted">${escapeHtml(c.name)}</span>`).join(' ');
+    return `
+      <button class="glass-sm p-4 text-left hover:bg-white/[0.06] transition-colors fade-up" style="animation-delay:${0.05 + i * 0.02}s" onclick='openTable(${jsArg(t)})'>
+        <div class="flex items-center justify-between gap-3 mb-3">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:${getTableColor(t)}"></span>
+            <span class="font-display font-semibold truncate">${escapeHtml(t)}</span>
+          </div>
+          <span class="text-xs text-muted">${info.rowCount.toLocaleString()} rows</span>
+        </div>
+        <div class="text-xs text-muted mb-3">${info.columns.length} columns &middot; ${info.fks.length} relationships</div>
+        <div class="flex flex-wrap gap-1.5">${columns}</div>
+      </button>`;
+  }).join('');
+  document.getElementById('dashboard-content').innerHTML = `
+    <div class="mb-6 fade-up">
+      <h2 class="font-display text-2xl font-bold tracking-tight mb-1">Database Overview</h2>
+      <p class="text-muted text-sm">${escapeHtml(state.dbFileName || 'Sample Database')}</p>
+    </div>
+    ${renderCurrentSessionHTML()}
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      ${statCard('stat-tables', 'Tables', 'fa-table', state.tables.length, 'bg-accent/15 text-accent', '.1s')}
+      ${statCard('stat-rows', 'Rows', 'fa-bars-staggered', totalRows, 'bg-emerald-500/15 text-emerald-400', '.15s')}
+      ${statCard('stat-columns', 'Columns', 'fa-table-columns', totalCols, 'bg-cyan-500/15 text-cyan-300', '.2s')}
+      ${statCard('stat-indexes', 'Indexes', 'fa-key', indexCount + totalFks, 'bg-rose-500/15 text-rose-300', '.25s')}
+    </div>
+    <div class="flex items-center justify-between gap-4 mb-4">
+      <h3 class="font-display text-lg font-semibold">Tables</h3>
+      <button class="px-3 py-2 rounded-lg bg-white/[0.05] text-muted text-xs font-semibold hover:text-text transition-colors" onclick="switchView('upload')">
+        <i class="fa-solid fa-house mr-1.5"></i>Landing Page
+      </button>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">${tableCards || emptyState('No tables found in this database.')}</div>`;
+  animateCounter(document.getElementById('stat-tables'), state.tables.length);
+  animateCounter(document.getElementById('stat-rows'), totalRows);
+  animateCounter(document.getElementById('stat-columns'), totalCols);
+  animateCounter(document.getElementById('stat-indexes'), indexCount + totalFks);
+}
+
+function statCard(id, label, icon, value, tone, delay) {
+  return `
+    <div class="glass stat-card p-5 fade-up" style="animation-delay:${delay}">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-9 h-9 rounded-xl ${tone} flex items-center justify-center"><i class="fa-solid ${icon} text-sm"></i></div>
+        <span class="text-muted text-xs font-semibold uppercase tracking-wider">${label}</span>
+      </div>
+      <div class="font-display text-3xl font-bold" id="${id}">${Number(value || 0).toLocaleString()}</div>
+    </div>`;
+}
+
+function emptyState(message) {
+  return `<div class="glass p-6 text-sm text-muted text-center">${message}</div>`;
+}
+
+function renderGraph() {
+  const container = document.getElementById('graph-container');
+  const tooltip = document.getElementById('graph-tooltip');
+  const empty = document.getElementById('graph-empty');
+  const legend = document.getElementById('graph-legend');
+  container.querySelectorAll('svg').forEach(svg => svg.remove());
+  if (state.graphSim) state.graphSim.stop();
+  if (!state.db || state.tables.length === 0) {
+    empty.classList.remove('hidden');
+    legend.classList.add('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  legend.classList.remove('hidden');
+  const width = container.clientWidth || 900;
+  const height = container.clientHeight || 600;
+  const nodes = state.tables.map(t => ({ id: t, rows: state.tableInfo[t].rowCount, color: getTableColor(t) }));
+  const links = [];
+  Object.entries(state.fkMap).forEach(([table, fks]) => {
+    fks.forEach(fk => links.push({ source: table, target: fk.table, label: `${fk.from} -> ${fk.to}` }));
+  });
+  const svg = d3.select(container).append('svg').attr('width', width).attr('height', height);
+  const g = svg.append('g');
+  svg.call(d3.zoom().scaleExtent([0.4, 3]).on('zoom', e => g.attr('transform', e.transform)));
+  g.append('g').selectAll('line').data(links).enter().append('line').attr('stroke', 'rgba(255,255,255,.2)').attr('stroke-width', 1.5);
+  const node = g.append('g').selectAll('g').data(nodes).enter().append('g').attr('cursor', 'pointer').call(d3.drag().on('start', dragStarted).on('drag', dragged).on('end', dragEnded)).on('click', (_, d) => openTable(d.id)).on('mouseenter', (event, d) => {
+    tooltip.innerHTML = `<strong>${escapeHtml(d.id)}</strong><br>${d.rows.toLocaleString()} rows`;
+    tooltip.style.left = event.offsetX + 16 + 'px';
+    tooltip.style.top = event.offsetY + 16 + 'px';
+    tooltip.classList.add('visible');
+  }).on('mouseleave', () => tooltip.classList.remove('visible'));
+  node.append('circle').attr('r', 28).attr('fill', d => d.color).attr('opacity', .22);
+  node.append('circle').attr('r', 18).attr('fill', d => d.color);
+  node.append('text').attr('text-anchor', 'middle').attr('y', 42).attr('fill', '#E5E7EB').attr('font-size', 12).text(d => d.id.length > 18 ? d.id.slice(0, 17) + '...' : d.id);
+  state.graphSim = d3.forceSimulation(nodes).force('link', d3.forceLink(links).id(d => d.id).distance(150)).force('charge', d3.forceManyBody().strength(-450)).force('center', d3.forceCenter(width / 2, height / 2)).on('tick', () => {
+    g.selectAll('line').attr('x1', d => d.source.x).attr('y1', d => d.source.y).attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+    node.attr('transform', d => `translate(${d.x},${d.y})`);
+  });
+  legend.innerHTML = `${state.tables.length} tables &middot; ${links.length} relationships`;
+  function dragStarted(event, d) {
+    if (!event.active) state.graphSim.alphaTarget(.3).restart();
+    d.fx = d.x;
+    d.fy = d.y;
+  }
+  function dragged(event, d) {
+    d.fx = event.x;
+    d.fy = event.y;
+  }
+  function dragEnded(event, d) {
+    if (!event.active) state.graphSim.alphaTarget(0);
+    d.fx = null;
+    d.fy = null;
+  }
+}
+
+function openTable(tableName) {
+  if (!state.tableInfo[tableName]) return;
+  state.currentTable = tableName;
+  state.page = 1;
+  state.sortCol = null;
+  state.sortDir = 'asc';
+  state.filterText = '';
+  switchView('table');
+}
+
+function tableWhereClause(columns) {
+  if (!state.filterText.trim()) return '';
+  const q = escapeSqlText(state.filterText.trim());
+  return 'WHERE ' + columns.map(c => `CAST(${quoteIdent(c.name)} AS TEXT) LIKE '%${q}%'`).join(' OR ');
+}
+
+function renderTable() {
+  if (!state.currentTable && state.tables.length) state.currentTable = state.tables[0];
+  if (!state.currentTable) {
+    document.getElementById('table-content').innerHTML = emptyState('Open a database to browse tables.');
+    return;
+  }
+  const info = state.tableInfo[state.currentTable];
+  const where = tableWhereClause(info.columns);
+  const order = state.sortCol ? `ORDER BY ${quoteIdent(state.sortCol)} ${state.sortDir.toUpperCase()}` : '';
+  const offset = (state.page - 1) * state.pageSize;
+  let total = 0;
+  let rows = [];
+  try {
+    const count = state.db.exec(`SELECT COUNT(*) FROM ${quoteIdent(state.currentTable)} ${where}`);
+    total = count.length ? count[0].values[0][0] : 0;
+    const result = state.db.exec(`SELECT * FROM ${quoteIdent(state.currentTable)} ${where} ${order} LIMIT ${state.pageSize} OFFSET ${offset}`);
+    state.tableColumns = result.length ? result[0].columns : info.columns.map(c => c.name);
+    rows = result.length ? result[0].values : [];
+    state.tableData = rows;
+    state.totalRows = total;
+  } catch (e) {
+    showToast('Could not read table: ' + e.message, 'error');
+  }
+  const totalPages = Math.max(1, Math.ceil(total / state.pageSize));
+  const headers = state.tableColumns.map(c => `<th onclick='sortTable(${jsArg(c)})'>${escapeHtml(c)} ${state.sortCol === c ? (state.sortDir === 'asc' ? '&#9650;' : '&#9660;') : ''}</th>`).join('');
+  const body = rows.map((row, idx) => `
+    <tr onclick="openInspector(${idx})" class="${state.selectedRow === row ? 'row-selected' : ''}">
+      ${row.map(v => `<td>${escapeHtml(v)}</td>`).join('')}
+    </tr>`).join('');
+  document.getElementById('table-content').innerHTML = `
+    <div class="px-6 py-4 border-b border-border flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <div class="min-w-0">
+        <button class="text-xs text-muted hover:text-accent mb-2" onclick="goBack()"><i class="fa-solid fa-arrow-left mr-1.5"></i>Back</button>
+        <h2 class="font-display text-2xl font-bold truncate">${escapeHtml(state.currentTable)}</h2>
+        <p class="text-xs text-muted mt-1">${total.toLocaleString()} rows &middot; ${info.columns.length} columns</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <input id="table-search" class="form-field w-64" placeholder="Search table" value="${escapeHtml(state.filterText)}">
+        <button class="icon-btn" title="Export CSV" onclick='exportCSV(${jsArg(state.currentTable)})'><i class="fa-solid fa-file-csv"></i></button>
+        <button class="icon-btn" title="Export JSON" onclick='exportJSON(${jsArg(state.currentTable)})'><i class="fa-solid fa-file-code"></i></button>
+      </div>
+    </div>
+    <div class="flex-1 overflow-auto">
+      <table class="data-grid ${state.profile?.preferences.compactRows ? 'compact' : ''}">
+        <thead><tr>${headers}</tr></thead>
+        <tbody>${body || `<tr><td colspan="${state.tableColumns.length || 1}" class="text-center text-muted py-10">No rows found</td></tr>`}</tbody>
+      </table>
+    </div>
+    <div class="px-6 py-3 border-t border-border flex items-center justify-between text-xs text-muted">
+      <span>Page ${state.page} of ${totalPages}</span>
+      <div class="flex items-center gap-2">
+        <button class="icon-btn" title="Previous page" onclick="changePage(-1)" ${state.page <= 1 ? 'disabled' : ''}><i class="fa-solid fa-chevron-left"></i></button>
+        <button class="icon-btn" title="Next page" onclick="changePage(1)" ${state.page >= totalPages ? 'disabled' : ''}><i class="fa-solid fa-chevron-right"></i></button>
+      </div>
+    </div>`;
+  const search = document.getElementById('table-search');
+  search.addEventListener('input', e => {
+    state.filterText = e.target.value;
+    state.page = 1;
+    clearTimeout(state.tableSearchTimer);
+    state.tableSearchTimer = setTimeout(() => {
+      renderTable();
+      const nextSearch = document.getElementById('table-search');
+      if (nextSearch) {
+        nextSearch.focus();
+        nextSearch.setSelectionRange(nextSearch.value.length, nextSearch.value.length);
+      }
+    }, 180);
+  });
+}
+
+function sortTable(column) {
+  if (state.sortCol === column) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+  else {
+    state.sortCol = column;
+    state.sortDir = 'asc';
+  }
+  renderTable();
+}
+
+function changePage(delta) {
+  const totalPages = Math.max(1, Math.ceil(state.totalRows / state.pageSize));
+  state.page = Math.min(totalPages, Math.max(1, state.page + delta));
+  renderTable();
+}
+
+function openInspector(rowIndex) {
+  const row = state.tableData?.[rowIndex];
+  if (!row) return;
+  state.selectedRow = row;
+  const fields = state.tableColumns.map((c, i) => `
+    <div class="py-3 border-b border-border last:border-b-0">
+      <div class="text-xs text-muted uppercase tracking-widest font-semibold mb-1">${escapeHtml(c)}</div>
+      <div class="text-sm break-words">${escapeHtml(row[i])}</div>
+    </div>`).join('');
+  document.getElementById('inspector-content').innerHTML = `
+    <div class="p-5 border-b border-border flex items-center justify-between">
+      <div>
+        <div class="text-xs text-muted uppercase tracking-widest font-semibold">Row Inspector</div>
+        <h3 class="font-display text-lg font-semibold mt-1">${escapeHtml(state.currentTable)}</h3>
+      </div>
+      <button class="icon-btn" onclick="closeInspector()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="p-5">${fields}</div>`;
+  document.getElementById('inspector-panel').classList.add('open');
+  document.getElementById('inspector-overlay').classList.add('open');
+  renderTable();
+}
+
+function closeInspector() {
+  document.getElementById('inspector-panel').classList.remove('open');
+  document.getElementById('inspector-overlay').classList.remove('open');
+}
+
+function renderQuery() {
+  const defaultSql = state.currentTable ? `SELECT * FROM ${quoteIdent(state.currentTable)} LIMIT 50;` : 'SELECT name, type FROM sqlite_master ORDER BY type, name;';
+  document.getElementById('query-content').innerHTML = `
+    <div class="px-6 py-4 border-b border-border">
+      <div class="flex items-center justify-between gap-4 mb-4">
+        <div>
+          <h2 class="font-display text-2xl font-bold tracking-tight">Query Editor</h2>
+          <p class="text-xs text-muted mt-1">Run SQLite queries against the open database.</p>
+        </div>
+        <button class="px-3 py-2 rounded-lg bg-accent text-bg text-xs font-bold hover:bg-accent-hover transition-colors" onclick="runQuery()"><i class="fa-solid fa-play mr-1.5"></i>Run</button>
+      </div>
+      <textarea id="sql-editor" class="query-editor">${escapeHtml(defaultSql)}</textarea>
+    </div>
+    <div id="query-result" class="flex-1 overflow-auto p-6"></div>`;
+  document.getElementById('sql-editor').addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      runQuery();
+    }
+  });
+}
+
+function runQuery() {
+  if (!state.db) {
+    showToast('Open a database before running a query.', 'error');
+    return;
+  }
+  const sql = document.getElementById('sql-editor').value.trim();
+  if (!sql) return;
+  try {
+    const results = state.db.exec(sql);
+    const target = document.getElementById('query-result');
+    if (!results.length) {
+      target.innerHTML = emptyState('Query executed successfully with no returned rows.');
+      buildSidebar();
+      updateDBInfo();
+      return;
+    }
+    target.innerHTML = results.map(result => {
+      const header = result.columns.map(c => `<th>${escapeHtml(c)}</th>`).join('');
+      const body = result.values.map(row => `<tr>${row.map(v => `<td>${escapeHtml(v)}</td>`).join('')}</tr>`).join('');
+      return `<div class="glass overflow-auto mb-5"><table class="data-grid"><thead><tr>${header}</tr></thead><tbody>${body}</tbody></table></div>`;
+    }).join('');
+    showToast('Query executed', 'success');
+  } catch (e) {
+    document.getElementById('query-result').innerHTML = `<div class="glass p-5 text-rose-200 text-sm">${escapeHtml(e.message)}</div>`;
+    showToast('Query failed', 'error');
+  }
+}
+
+function renderCharts() {
+  if (!state.db || !state.tables.length) {
+    document.getElementById('charts-content').innerHTML = emptyState('Open a database to build charts.');
+    return;
+  }
+  const table = state.chartTable && state.tableInfo[state.chartTable] ? state.chartTable : state.tables[0];
+  state.chartTable = table;
+  const columns = state.tableInfo[table].columns;
+  const numeric = columns.filter(c => /INT|REAL|NUM|DEC|DOUBLE|FLOAT/i.test(c.type || ''));
+  const labels = columns.filter(c => !numeric.includes(c));
+  const labelCol = state.chartLabel && columns.some(c => c.name === state.chartLabel) ? state.chartLabel : (labels[0]?.name || columns[0]?.name);
+  const valueCol = state.chartValue && numeric.some(c => c.name === state.chartValue) ? state.chartValue : numeric[0]?.name;
+  state.chartLabel = labelCol;
+  state.chartValue = valueCol;
+  const tableOptions = state.tables.map(t => `<option value="${escapeHtml(t)}" ${t === table ? 'selected' : ''}>${escapeHtml(t)}</option>`).join('');
+  const labelOptions = columns.map(c => `<option value="${escapeHtml(c.name)}" ${c.name === labelCol ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('');
+  const valueOptions = numeric.map(c => `<option value="${escapeHtml(c.name)}" ${c.name === valueCol ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('');
+  document.getElementById('charts-content').innerHTML = `
+    <div class="mb-6 fade-up">
+      <h2 class="font-display text-2xl font-bold tracking-tight mb-1">Charts</h2>
+      <p class="text-muted text-sm">Create a quick chart from numeric table columns.</p>
+    </div>
+    <div class="glass p-5 mb-5">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <select id="chart-table" class="form-field">${tableOptions}</select>
+        <select id="chart-label" class="form-field">${labelOptions}</select>
+        <select id="chart-value" class="form-field" ${numeric.length ? '' : 'disabled'}>${valueOptions}</select>
+        <select id="chart-type" class="form-field">
+          <option value="bar">Bar</option>
+          <option value="line">Line</option>
+          <option value="doughnut">Doughnut</option>
+        </select>
+      </div>
+    </div>
+    <div class="glass p-5">
+      ${numeric.length ? '<div class="chart-container" style="height:360px"><canvas id="chart-canvas"></canvas></div>' : '<div class="text-sm text-muted">This table has no numeric columns to chart.</div>'}
+    </div>`;
+  document.getElementById('chart-table').addEventListener('change', e => {
+    state.chartTable = e.target.value;
+    state.chartLabel = null;
+    state.chartValue = null;
+    renderCharts();
+  });
+  document.getElementById('chart-label').addEventListener('change', e => {
+    state.chartLabel = e.target.value;
+    drawChart();
+  });
+  document.getElementById('chart-value')?.addEventListener('change', e => {
+    state.chartValue = e.target.value;
+    drawChart();
+  });
+  document.getElementById('chart-type').addEventListener('change', drawChart);
+  if (numeric.length) drawChart();
+}
+
+function drawChart() {
+  if (state.chartInstance) state.chartInstance.destroy();
+  const type = document.getElementById('chart-type')?.value || 'bar';
+  const labelCol = document.getElementById('chart-label')?.value || state.chartLabel;
+  const valueCol = document.getElementById('chart-value')?.value || state.chartValue;
+  if (!labelCol || !valueCol) return;
+  try {
+    const result = state.db.exec(`SELECT ${quoteIdent(labelCol)}, ${quoteIdent(valueCol)} FROM ${quoteIdent(state.chartTable)} WHERE ${quoteIdent(valueCol)} IS NOT NULL LIMIT 20`);
+    const labels = result.length ? result[0].values.map(r => String(r[0])) : [];
+    const values = result.length ? result[0].values.map(r => Number(r[1]) || 0) : [];
+    const canvas = document.getElementById('chart-canvas');
+    state.chartInstance = new Chart(canvas, {
+      type,
+      data: { labels, datasets: [{ label: valueCol, data: values, backgroundColor: '#E8A83888', borderColor: '#E8A838', borderWidth: 2 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#E5E7EB' } } }, scales: type === 'doughnut' ? {} : { x: { ticks: { color: '#9CA3AF' }, grid: { color: 'rgba(255,255,255,.06)' } }, y: { ticks: { color: '#9CA3AF' }, grid: { color: 'rgba(255,255,255,.06)' } } } }
+    });
+  } catch (e) {
+    showToast('Chart failed: ' + e.message, 'error');
+  }
+}
+
+function exportCSV(tableName) {
+  try {
+    const r = state.db.exec(`SELECT * FROM ${quoteIdent(tableName)}`);
+    if (r.length === 0) {
+      showToast('Table is empty', 'info');
+      return;
+    }
+    const cols = r[0].columns;
+    const rows = r[0].values;
+    let csv = cols.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',') + '\n';
+    rows.forEach(row => {
+      csv += row.map(v => {
+        if (v === null) return '';
+        return `"${String(v).replace(/"/g, '""')}"`;
+      }).join(',') + '\n';
+    });
+    downloadFile(csv, `${tableName}.csv`, 'text/csv');
+    showToast(`Exported ${rows.length} rows as CSV`, 'success');
+  } catch (e) {
+    showToast('Export failed: ' + e.message, 'error');
+  }
+}
+
+function exportJSON(tableName) {
+  try {
+    const r = state.db.exec(`SELECT * FROM ${quoteIdent(tableName)}`);
+    if (r.length === 0) {
+      showToast('Table is empty', 'info');
+      return;
+    }
+    const cols = r[0].columns;
+    const rows = r[0].values.map(row => Object.fromEntries(cols.map((c, i) => [c, row[i]])));
+    downloadFile(JSON.stringify(rows, null, 2), `${tableName}.json`, 'application/json');
+    showToast(`Exported ${rows.length} rows as JSON`, 'success');
+  } catch (e) {
+    showToast('Export failed: ' + e.message, 'error');
+  }
+}
+
+function downloadFile(content, filename, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function loadSampleDatabase() {
+  document.getElementById('loading-overlay').classList.remove('hidden');
+  setTimeout(async () => {
+    try {
+      const db = new state.SQL.Database();
+      db.run(`CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, email TEXT UNIQUE, role TEXT, department TEXT, salary REAL, created_at TEXT DEFAULT (datetime('now')))`);
+      db.run(`CREATE TABLE projects (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, owner_id INTEGER REFERENCES users(id), status TEXT, budget REAL, start_date TEXT, end_date TEXT)`);
+      db.run(`CREATE TABLE tasks (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER REFERENCES projects(id), assignee_id INTEGER REFERENCES users(id), title TEXT NOT NULL, priority TEXT, status TEXT, hours_spent REAL, due_date TEXT)`);
+      db.run(`CREATE TABLE comments (id INTEGER PRIMARY KEY AUTOINCREMENT, task_id INTEGER REFERENCES tasks(id), user_id INTEGER REFERENCES users(id), body TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')))`);
+      const users = [
+        ['Alice Chen','alice@company.com','admin','Engineering',125000],
+        ['Bob Martinez','bob@company.com','lead','Engineering',110000],
+        ['Carol Davis','carol@company.com','developer','Engineering',95000],
+        ['Eve Johnson','eve@company.com','designer','Design',88000],
+        ['Grace Kim','grace@company.com','manager','Product',115000],
+        ['Henry Park','henry@company.com','analyst','Analytics',90000]
+      ];
+      users.forEach(u => db.run('INSERT INTO users (name,email,role,department,salary) VALUES (?,?,?,?,?)', u));
+      const projects = [
+        ['Platform Redesign',1,'active',250000,'2026-01-15','2026-06-30'],
+        ['Mobile App v2',2,'active',180000,'2026-02-01','2026-08-15'],
+        ['Data Pipeline',5,'planning',120000,'2026-03-01','2026-09-30']
+      ];
+      projects.forEach(p => db.run('INSERT INTO projects (name,owner_id,status,budget,start_date,end_date) VALUES (?,?,?,?,?,?)', p));
+      const priorities = ['low','medium','high','critical'];
+      const statuses = ['open','in_progress','review','done'];
+      const titles = ['Set up component library','Design login flow','Implement auth API','Write unit tests','Create database schema','Build search feature','Optimize queries','Design settings page','Implement notifications','Add export feature','Build reporting module','Add audit log'];
+      titles.forEach((title, i) => {
+        db.run('INSERT INTO tasks (project_id,assignee_id,title,priority,status,hours_spent,due_date) VALUES (?,?,?,?,?,?,?)', [(i % 3) + 1, (i % 6) + 1, title, priorities[i % priorities.length], statuses[i % statuses.length], Math.round(Math.random() * 40 * 10) / 10, `2026-${String((i % 6) + 4).padStart(2,'0')}-${String((i % 28) + 1).padStart(2,'0')}`]);
+      });
+      const notes = ['This looks good, approved.','Can we add more detail here?','Fixed the issue, please review.','Blocked by dependency update.','Added test coverage for this.','Needs design review before merging.'];
+      for (let i = 1; i <= 12; i++) {
+        db.run('INSERT INTO comments (task_id,user_id,body) VALUES (?,?,?)', [i, (i % 6) + 1, notes[i % notes.length]]);
+      }
+      const sampleBytes = db.export();
+      const sampleBuffer = sampleBytes.buffer.slice(sampleBytes.byteOffset, sampleBytes.byteOffset + sampleBytes.byteLength);
+      await loadDatabase(db, { filename: 'sample_company.db', size: sampleBuffer.byteLength });
+      if (state.profile.preferences.autoSaveUploads) {
+        try {
+          await saveDatabaseFile(sampleBuffer, { filename: 'sample_company.db', size: sampleBuffer.byteLength });
+          showToast('Sample database loaded and saved locally', 'success');
+        } catch (storageError) {
+          state.currentDbId = null;
+          state.currentDbMeta = null;
+          localStorage.removeItem(STORAGE_KEYS.currentDbId);
+          showToast('Sample loaded, but browser storage is full or unavailable.', 'error');
+          console.error(storageError);
+        }
+      } else {
+        showToast('Sample database loaded', 'success');
+      }
+    } catch (e) {
+      document.getElementById('loading-overlay').classList.add('hidden');
+      showToast('Failed to create sample database', 'error');
+      console.error(e);
+    }
+  }, 300);
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeInspector();
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Backspace') {
+    e.preventDefault();
+    goBack();
+  }
+});
+
+async function init() {
+  loadProfile();
+  updateProfileChrome();
+  renderProfileSetupPrompt();
+  await initSQL();
+  setupFileHandlers();
+  try {
+    await openClientStore();
+    await refreshSavedDatabases();
+    const lastDbId = localStorage.getItem(STORAGE_KEYS.currentDbId);
+    if (lastDbId && state.profile.preferences.reopenLast) {
+      await loadSavedDatabase(lastDbId, { silent: true });
+    } else {
+      renderUploadSavedDatabases();
+    }
+  } catch (e) {
+    state.storageReady = false;
+    renderUploadSavedDatabases();
+    showToast('IndexedDB is unavailable. Saved database history is disabled.', 'error');
+    console.error(e);
+  }
+  if (state.profile.preferences.compactRows) state.pageSize = 100;
+}
+
+init();
+</script>
+</body>
+</html>
