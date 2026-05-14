@@ -4,10 +4,9 @@ DB Lens is a single-page SQLite database viewer that runs in the browser. It ope
 
 ## Preview
 
-![Landing page](https://raw.githubusercontent.com/cranbru/DB-Lens/refs/heads/main/images/Dashboard.png)
-![Dashboard](docs/images/dashboard.png)
-![Relationship graph](docs/images/relationship-graph.png)
-![Profile setup](docs/images/profile-setup.png)
+![Landing page](https://raw.githubusercontent.com/cranbru/DB-Lens/refs/heads/main/images/Landing_page.png)
+![Dashboard](https://raw.githubusercontent.com/cranbru/DB-Lens/refs/heads/main/images/Dashboard.png)
+![Relationship graph](https://raw.githubusercontent.com/cranbru/DB-Lens/refs/heads/main/images/Relationship_graph.png)
 
 ## Features
 
