@@ -141,6 +141,38 @@ body.theme-light .bg-white\/\[0\.05\]{background:rgba(15,23,42,.06)!important}
 .toolbar-btn.active{color:var(--accent);border-color:rgba(232,168,56,.32);background:rgba(232,168,56,.1)}
 .toolbar-select{min-height:34px;border:1px solid var(--border);background:rgba(0,0,0,.24);border-radius:10px;color:var(--text);font-size:12px;font-weight:700;padding:0 10px;outline:none}
 body.theme-light .toolbar-select{background:rgba(255,255,255,.82);color:#111827}
+.custom-dd{position:relative;z-index:1}
+.custom-dd--toolbar{z-index:40}
+.custom-dd--fluid{width:100%}
+.custom-dd--fluid .custom-dd-trigger{width:100%;min-width:0}
+.custom-dd--fluid .custom-dd-menu{left:0;right:0;width:auto;min-width:100%}
+.custom-dd--lg .custom-dd-trigger{min-height:40px;padding:0 14px;border-radius:11px;font-size:13px}
+.custom-dd--lg .custom-dd-item{font-size:13px;padding:10px 12px}
+.custom-dd--disabled{opacity:.72}
+.custom-dd-trigger{display:inline-flex;align-items:center;justify-content:space-between;gap:10px;min-width:148px;min-height:34px;padding:0 12px;border-radius:10px;border:1px solid var(--border);background:rgba(0,0,0,.24);color:var(--text);font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;transition:border-color .18s ease,background .18s ease,box-shadow .2s ease}
+.custom-dd-trigger .custom-dd-label{min-width:0;text-align:left}
+.custom-dd-trigger:hover:not(:disabled){background:rgba(255,255,255,.07);border-color:var(--border-light)}
+.custom-dd-trigger:focus-visible{outline:2px solid rgba(232,168,56,.45);outline-offset:2px}
+.custom-dd-trigger:disabled{opacity:.55;cursor:not-allowed}
+.custom-dd-trigger[aria-expanded="true"]{border-color:rgba(232,168,56,.38);background:rgba(232,168,56,.08);box-shadow:0 0 0 1px rgba(232,168,56,.12),0 4px 20px rgba(0,0,0,.25)}
+.custom-dd-trigger i{transition:transform .22s ease}
+.custom-dd-trigger[aria-expanded="true"] i{transform:rotate(180deg)}
+.custom-dd-menu{position:absolute;left:0;top:calc(100% + 8px);min-width:100%;width:max-content;max-height:min(280px,45vh);overflow-x:hidden;overflow-y:auto;padding:6px;border-radius:12px;background:rgba(17,24,39,.96);border:1px solid var(--border);box-shadow:0 18px 50px rgba(0,0,0,.48),0 0 0 1px rgba(255,255,255,.04) inset,0 0 32px rgba(232,168,56,.06);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);opacity:0;pointer-events:none;transform:translateY(-8px) scale(.98);transition:opacity .2s cubic-bezier(.4,0,.2,1),transform .2s cubic-bezier(.4,0,.2,1);transform-origin:top left;z-index:60}
+.custom-dd-menu::-webkit-scrollbar{width:5px}
+.custom-dd-menu::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:4px}
+.custom-dd-menu.open{opacity:1;pointer-events:auto;transform:translateY(0) scale(1)}
+.custom-dd-item{display:flex;align-items:center;gap:10px;width:100%;padding:9px 11px;border-radius:8px;border:none;background:transparent;color:var(--muted);font-size:12px;font-weight:600;font-family:inherit;text-align:left;cursor:pointer;transition:background .15s ease,color .15s ease,box-shadow .15s ease}
+.custom-dd-item i{width:14px;text-align:center;font-size:11px;opacity:.85;flex-shrink:0}
+.custom-dd-item:hover{color:var(--text);background:rgba(255,255,255,.08)}
+.custom-dd-item.active{color:var(--accent);background:rgba(232,168,56,.14);box-shadow:inset 0 0 0 1px rgba(232,168,56,.22)}
+.custom-dd-item.active i{color:var(--accent);opacity:1}
+body.theme-light .custom-dd-trigger{background:rgba(255,255,255,.82);color:#111827}
+body.theme-light .custom-dd-trigger[aria-expanded="true"]{background:rgba(232,168,56,.12);box-shadow:0 0 0 1px rgba(232,168,56,.15),0 8px 24px rgba(15,23,42,.08)}
+body.theme-light .custom-dd-menu{background:rgba(255,255,255,.96);box-shadow:0 18px 48px rgba(15,23,42,.12),0 0 0 1px rgba(15,23,42,.06) inset}
+body.theme-light .custom-dd-item{color:#64748B}
+body.theme-light .custom-dd-item:hover{color:#111827;background:rgba(15,23,42,.06)}
+body.theme-light .custom-dd-item.active{color:#B45309;background:rgba(232,168,56,.14)}
+body.theme-light .custom-dd-item.active i{color:#B45309}
 .pin-button{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border-radius:9px;color:var(--muted);transition:all .18s ease}
 .pin-button:hover,.pin-button.active{color:var(--accent);background:rgba(232,168,56,.1)}
 .fk-link-btn{display:inline-flex;align-items:center;gap:6px;color:var(--accent);font-weight:700;text-decoration:underline;text-underline-offset:2px}
@@ -174,6 +206,8 @@ body.theme-light .toolbar-select{background:rgba(255,255,255,.82);color:#111827}
 
 
 .chart-container{position:relative;width:100%;max-height:400px}
+.charts-filters{position:relative;z-index:25}
+.charts-body{position:relative;z-index:0}
 </style>
 </head>
 <body class="font-body">
@@ -639,7 +673,35 @@ document.addEventListener('click', e => {
   const menu = document.getElementById('profile-menu');
   const button = document.getElementById('profile-button');
   if (menu && button && !menu.contains(e.target) && !button.contains(e.target)) closeProfileMenu();
+  if (!e.target.closest('.custom-dd')) closeAllCustomDropdowns();
 });
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeAllCustomDropdowns();
+});
+
+function closeAllCustomDropdowns() {
+  document.querySelectorAll('.custom-dd-menu.open').forEach(menu => {
+    menu.classList.remove('open');
+    const wrap = menu.closest('.custom-dd');
+    const trig = wrap?.querySelector('.custom-dd-trigger');
+    if (trig) trig.setAttribute('aria-expanded', 'false');
+  });
+}
+
+function toggleCustomDropdown(trigger) {
+  const btn = typeof trigger === 'string' ? document.getElementById(trigger) : trigger;
+  if (!btn || btn.disabled) return;
+  const wrap = btn.closest('.custom-dd');
+  const menu = wrap?.querySelector('.custom-dd-menu');
+  if (!menu) return;
+  const willOpen = !menu.classList.contains('open');
+  closeAllCustomDropdowns();
+  if (willOpen) {
+    menu.classList.add('open');
+    btn.setAttribute('aria-expanded', 'true');
+  }
+}
 
 function openClientStore() {
   return new Promise((resolve, reject) => {
@@ -1353,13 +1415,25 @@ function renderGraph() {
   const toolbar = document.getElementById('graph-toolbar');
   container.querySelectorAll('svg').forEach(svg => svg.remove());
   if (state.graphSim) state.graphSim.stop();
+  const gl = state.profile.preferences.graphLayout;
+  const glLabel = { force: 'Force graph', compact: 'Compact', grouped: 'Grouped' };
+  const glItem = (value, icon, label) => `
+    <button type="button" class="custom-dd-item ${gl === value ? 'active' : ''}" role="option" aria-selected="${gl === value}" onclick="setGraphLayout('${value}')">
+      <i class="fa-solid ${icon}"></i><span>${label}</span>
+    </button>`;
   toolbar.innerHTML = `
     <div class="glass-sm p-2 flex items-center gap-2">
-      <select class="toolbar-select" id="graph-layout-select" onchange="setGraphLayout(this.value)">
-        <option value="force" ${state.profile.preferences.graphLayout === 'force' ? 'selected' : ''}>Force graph</option>
-        <option value="compact" ${state.profile.preferences.graphLayout === 'compact' ? 'selected' : ''}>Compact</option>
-        <option value="grouped" ${state.profile.preferences.graphLayout === 'grouped' ? 'selected' : ''}>Grouped</option>
-      </select>
+      <div class="custom-dd custom-dd--toolbar" id="graph-layout-dd">
+        <button type="button" class="custom-dd-trigger" id="graph-layout-dd-trigger" onclick="toggleCustomDropdown(this)" aria-haspopup="listbox" aria-expanded="false" aria-label="Graph layout">
+          <span class="custom-dd-label" id="graph-layout-dd-label">${glLabel[gl] || glLabel.force}</span>
+          <i class="fa-solid fa-chevron-down text-[10px] opacity-70"></i>
+        </button>
+        <div class="custom-dd-menu" id="graph-layout-dd-menu" role="listbox" aria-labelledby="graph-layout-dd-trigger">
+          ${glItem('force', 'fa-share-nodes', 'Force graph')}
+          ${glItem('compact', 'fa-border-all', 'Compact')}
+          ${glItem('grouped', 'fa-layer-group', 'Grouped')}
+        </div>
+      </div>
     </div>
     <div class="glass-sm p-2 flex items-center gap-2">
       <button class="toolbar-btn" onclick="exportGraphSVG()"><i class="fa-solid fa-vector-square"></i>SVG</button>
@@ -1431,6 +1505,7 @@ function renderGraph() {
 }
 
 function setGraphLayout(layout) {
+  closeAllCustomDropdowns();
   state.profile.preferences.graphLayout = layout;
   saveProfile();
   renderGraph();
@@ -1850,6 +1925,44 @@ function runQuery() {
   }
 }
 
+function chartsDdRow(value, text, active, iconClass, handlerName) {
+  return `<button type="button" class="custom-dd-item ${active ? 'active' : ''}" role="option" aria-selected="${active}" onclick='${handlerName}(${jsArg(value)})'><i class="fa-solid ${iconClass}"></i><span class="truncate">${escapeHtml(text)}</span></button>`;
+}
+
+function chartsDdMarkup(fluid, disabled, ariaLabel, displayText, menuInnerHtml) {
+  const wrap = `custom-dd${fluid ? ' custom-dd--fluid custom-dd--lg' : ''}${disabled ? ' custom-dd--disabled' : ''}`;
+  if (disabled) {
+    return `<div class="${wrap}"><button type="button" class="custom-dd-trigger" disabled aria-label="${escapeHtml(ariaLabel)}"><span class="custom-dd-label truncate">${escapeHtml(displayText)}</span><i class="fa-solid fa-chevron-down text-[10px] opacity-50 flex-shrink-0"></i></button></div>`;
+  }
+  return `<div class="${wrap}"><button type="button" class="custom-dd-trigger" onclick="toggleCustomDropdown(this)" aria-haspopup="listbox" aria-expanded="false" aria-label="${escapeHtml(ariaLabel)}"><span class="custom-dd-label truncate">${escapeHtml(displayText)}</span><i class="fa-solid fa-chevron-down text-[10px] opacity-70 flex-shrink-0"></i></button><div class="custom-dd-menu" role="listbox">${menuInnerHtml}</div></div>`;
+}
+
+function chartPickTable(table) {
+  closeAllCustomDropdowns();
+  state.chartTable = table;
+  state.chartLabel = null;
+  state.chartValue = null;
+  renderCharts();
+}
+
+function chartPickLabel(col) {
+  closeAllCustomDropdowns();
+  state.chartLabel = col;
+  drawChart();
+}
+
+function chartPickValue(col) {
+  closeAllCustomDropdowns();
+  state.chartValue = col;
+  drawChart();
+}
+
+function chartPickType(type) {
+  closeAllCustomDropdowns();
+  state.chartType = type;
+  drawChart();
+}
+
 function renderCharts() {
   if (!state.db || !state.tables.length) {
     document.getElementById('charts-content').innerHTML = emptyState('Open a database to build charts.');
@@ -1864,58 +1977,56 @@ function renderCharts() {
   const valueCol = state.chartValue && numeric.some(c => c.name === state.chartValue) ? state.chartValue : numeric[0]?.name;
   state.chartLabel = labelCol;
   state.chartValue = valueCol;
-  const tableOptions = state.tables.map(t => `<option value="${escapeHtml(t)}" ${t === table ? 'selected' : ''}>${escapeHtml(t)}</option>`).join('');
-  const labelOptions = columns.map(c => `<option value="${escapeHtml(c.name)}" ${c.name === labelCol ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('');
-  const valueOptions = numeric.map(c => `<option value="${escapeHtml(c.name)}" ${c.name === valueCol ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('');
+  const typeDefs = [
+    { v: 'bar', label: 'Bar', icon: 'fa-chart-column' },
+    { v: 'line', label: 'Line', icon: 'fa-chart-line' },
+    { v: 'doughnut', label: 'Doughnut', icon: 'fa-chart-pie' }
+  ];
+  const chartType = typeDefs.some(d => d.v === state.chartType) ? state.chartType : 'bar';
+  state.chartType = chartType;
+  const typeLabel = typeDefs.find(d => d.v === chartType)?.label || 'Bar';
+  const tableRows = state.tables.map(t => chartsDdRow(t, t, t === table, 'fa-table', 'chartPickTable')).join('');
+  const labelRows = columns.map(c => chartsDdRow(c.name, c.name, c.name === labelCol, 'fa-font', 'chartPickLabel')).join('');
+  const valueRows = numeric.map(c => chartsDdRow(c.name, c.name, c.name === valueCol, 'fa-hashtag', 'chartPickValue')).join('');
+  const typeRows = typeDefs.map(d => chartsDdRow(d.v, d.label, chartType === d.v, d.icon, 'chartPickType')).join('');
+  const tableDd = chartsDdMarkup(true, false, 'Table', table, tableRows);
+  const labelDd = chartsDdMarkup(true, false, 'Label column', labelCol, labelRows);
+  const valueDd = numeric.length
+    ? chartsDdMarkup(true, false, 'Value column', valueCol || '—', valueRows)
+    : chartsDdMarkup(true, true, 'Value column', 'No numeric columns', '');
+  const typeDd = chartsDdMarkup(true, false, 'Chart type', typeLabel, typeRows);
   document.getElementById('charts-content').innerHTML = `
     <div class="mb-6 fade-up">
       <h2 class="font-display text-2xl font-bold tracking-tight mb-1">Charts</h2>
       <p class="text-muted text-sm">Create a quick chart from numeric table columns.</p>
     </div>
-    <div class="glass p-5 mb-5">
+    <div class="glass charts-filters p-5 mb-5">
       <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-        <select id="chart-table" class="form-field">${tableOptions}</select>
-        <select id="chart-label" class="form-field">${labelOptions}</select>
-        <select id="chart-value" class="form-field" ${numeric.length ? '' : 'disabled'}>${valueOptions}</select>
-        <select id="chart-type" class="form-field">
-          <option value="bar">Bar</option>
-          <option value="line">Line</option>
-          <option value="doughnut">Doughnut</option>
-        </select>
+        ${tableDd}
+        ${labelDd}
+        ${valueDd}
+        ${typeDd}
       </div>
     </div>
-    <div class="glass p-5">
+    <div class="glass charts-body p-5">
       ${numeric.length ? '<div class="chart-container" style="height:360px"><canvas id="chart-canvas"></canvas></div>' : '<div class="text-sm text-muted">This table has no numeric columns to chart.</div>'}
     </div>`;
-  document.getElementById('chart-table').addEventListener('change', e => {
-    state.chartTable = e.target.value;
-    state.chartLabel = null;
-    state.chartValue = null;
-    renderCharts();
-  });
-  document.getElementById('chart-label').addEventListener('change', e => {
-    state.chartLabel = e.target.value;
-    drawChart();
-  });
-  document.getElementById('chart-value')?.addEventListener('change', e => {
-    state.chartValue = e.target.value;
-    drawChart();
-  });
-  document.getElementById('chart-type').addEventListener('change', drawChart);
   if (numeric.length) drawChart();
 }
 
 function drawChart() {
   if (state.chartInstance) state.chartInstance.destroy();
-  const type = document.getElementById('chart-type')?.value || 'bar';
-  const labelCol = document.getElementById('chart-label')?.value || state.chartLabel;
-  const valueCol = document.getElementById('chart-value')?.value || state.chartValue;
-  if (!labelCol || !valueCol) return;
+  const chartTypes = ['bar', 'line', 'doughnut'];
+  const type = chartTypes.includes(state.chartType) ? state.chartType : 'bar';
+  const labelCol = state.chartLabel;
+  const valueCol = state.chartValue;
+  if (!state.chartTable || !labelCol || !valueCol) return;
   try {
     const result = state.db.exec(`SELECT ${quoteIdent(labelCol)}, ${quoteIdent(valueCol)} FROM ${quoteIdent(state.chartTable)} WHERE ${quoteIdent(valueCol)} IS NOT NULL LIMIT 20`);
     const labels = result.length ? result[0].values.map(r => String(r[0])) : [];
     const values = result.length ? result[0].values.map(r => Number(r[1]) || 0) : [];
     const canvas = document.getElementById('chart-canvas');
+    if (!canvas) return;
     state.chartInstance = new Chart(canvas, {
       type,
       data: { labels, datasets: [{ label: valueCol, data: values, backgroundColor: '#E8A83888', borderColor: '#E8A838', borderWidth: 2 }] },
