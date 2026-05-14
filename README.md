@@ -19,7 +19,14 @@ DB Lens is a single-page SQLite database viewer that runs in the browser. It ope
 - View table counts, row counts, columns, indexes, and foreign keys
 - Browse tables with search, sorting, pagination, and row inspection
 - Run SQL queries in the browser with `sql.js`
+- Rerun query history and apply saved SQL snippets
 - Visualize table relationships with D3
+- Export schema graphs as SVG, PNG, or PDF reports
+- Compare two SQLite databases and review schema differences
+- Navigate foreign-key relationships from table cells and row details
+- Pin important tables for faster browsing
+- Switch between dark and light themes
+- Choose force, compact, or grouped ER diagram layouts
 - Build quick charts with Chart.js
 - Save recent databases with IndexedDB
 - Set a local profile name and avatar
@@ -35,22 +42,21 @@ DB Lens is a single-page SQLite database viewer that runs in the browser. It ope
 
 ## Usage
 
-Open `app.html` in a browser, upload a SQLite database, or try the built-in sample database.
+Open `index.html` in a browser, upload a SQLite database, compare two database files, or try the built-in sample database.
 
 ## Project Structure
 
 ```text
 Db_viewer/
-  app.html
+  index.html
   README.md
-  docs/images/
+  assests/
 ```
 
 ## Future Improvements
 
-- Add export options for charts and relationship graphs
-- Add saved SQL snippets and query history
-- Add schema diffing between two databases
-- Add table-level notes and bookmarks
 - Add keyboard-accessible command palette
+- Add editable custom SQL snippet library
+- Add chart export options
+- Add table-level notes
 - Add tests for database loading, profile storage, and query results

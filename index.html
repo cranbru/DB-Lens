@@ -18,6 +18,19 @@ tailwind.config={theme:{extend:{fontFamily:{display:['Space Grotesk','sans-serif
 :root{--accent:#E8A838;--accent-glow:rgba(232,168,56,0.3);--bg:#0B0F19;--surface:rgba(255,255,255,0.04);--border:rgba(255,255,255,0.08);--text:#E5E7EB;--muted:#6B7280}
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif}
+body.theme-light{--bg:#F8FAFC;--surface:rgba(15,23,42,0.045);--border:rgba(15,23,42,0.12);--text:#111827;--muted:#64748B;background:#F8FAFC;color:#111827}
+body.theme-light #sidebar{background:rgba(248,250,252,.92)}
+body.theme-light .glass,body.theme-light .glass-sm{background:rgba(255,255,255,.78);box-shadow:0 12px 42px rgba(15,23,42,.08)}
+body.theme-light .profile-button,body.theme-light .profile-menu,body.theme-light .inspector-panel{background:rgba(255,255,255,.92)}
+body.theme-light .form-field,body.theme-light .query-editor{background:rgba(255,255,255,.82);color:#111827}
+body.theme-light .data-grid th{background:rgba(248,250,252,.96);color:#64748B}
+body.theme-light .data-grid tr:hover td{background:rgba(15,23,42,.04)}
+body.theme-light .bg-orb{opacity:.08}
+body.theme-light .graph-tooltip{background:rgba(255,255,255,.96);color:#111827}
+body.theme-light .border-border{border-color:rgba(15,23,42,.12)!important}
+body.theme-light .text-muted{color:#64748B!important}
+body.theme-light .bg-bg\/90{background:rgba(248,250,252,.9)!important}
+body.theme-light .bg-white\/\[0\.05\]{background:rgba(15,23,42,.06)!important}
 ::-webkit-scrollbar{width:6px;height:6px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:3px}
@@ -123,6 +136,18 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .form-field{width:100%;border:1px solid var(--border);background:rgba(0,0,0,.26);border-radius:11px;color:var(--text);font-size:14px;padding:10px 12px;outline:none;transition:border-color .2s ease,background .2s ease}
 .form-field:focus{border-color:rgba(232,168,56,.42);background:rgba(0,0,0,.34)}
 .session-pill{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(232,168,56,.24);background:rgba(232,168,56,.1);color:#FCD34D;border-radius:999px;padding:4px 10px;font-size:11px;font-weight:700;letter-spacing:.25px}
+.toolbar-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:34px;padding:8px 11px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted);font-size:12px;font-weight:700;transition:all .18s ease}
+.toolbar-btn:hover{color:var(--text);background:rgba(255,255,255,.09);border-color:var(--border-light)}
+.toolbar-btn.active{color:var(--accent);border-color:rgba(232,168,56,.32);background:rgba(232,168,56,.1)}
+.toolbar-select{min-height:34px;border:1px solid var(--border);background:rgba(0,0,0,.24);border-radius:10px;color:var(--text);font-size:12px;font-weight:700;padding:0 10px;outline:none}
+body.theme-light .toolbar-select{background:rgba(255,255,255,.82);color:#111827}
+.pin-button{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border-radius:9px;color:var(--muted);transition:all .18s ease}
+.pin-button:hover,.pin-button.active{color:var(--accent);background:rgba(232,168,56,.1)}
+.fk-link-btn{display:inline-flex;align-items:center;gap:6px;color:var(--accent);font-weight:700;text-decoration:underline;text-underline-offset:2px}
+.compare-card{border:1px solid var(--border);background:var(--surface);border-radius:14px;padding:16px}
+.diff-added{border-color:rgba(16,185,129,.28);background:rgba(16,185,129,.08)}
+.diff-removed{border-color:rgba(239,68,68,.28);background:rgba(239,68,68,.08)}
+.diff-changed{border-color:rgba(232,168,56,.32);background:rgba(232,168,56,.08)}
 
 
 .spinner{width:40px;height:40px;border:3px solid rgba(232,168,56,0.15);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
@@ -181,6 +206,9 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
   <button class="profile-menu-item" onclick="switchView('upload'); closeProfileMenu()">
     <i class="fa-solid fa-house w-4 text-center"></i><span>Main Landing Page</span>
   </button>
+  <button class="profile-menu-item" onclick="toggleTheme(); closeProfileMenu()">
+    <i class="fa-solid fa-circle-half-stroke w-4 text-center"></i><span>Toggle Theme</span>
+  </button>
   <button class="profile-menu-item" onclick="switchView(state.db ? 'dashboard' : 'upload'); closeProfileMenu()">
     <i class="fa-solid fa-database w-4 text-center"></i><span>Current Session</span>
   </button>
@@ -215,6 +243,9 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
       </div>
       <div class="sidebar-item" data-view="charts" onclick="switchView('charts')">
         <i class="fa-solid fa-chart-bar"></i><span>Charts</span>
+      </div>
+      <div class="sidebar-item" data-view="compare" onclick="switchView('compare')">
+        <i class="fa-solid fa-code-compare"></i><span>Compare</span>
       </div>
       <div class="sidebar-item" data-view="profile" onclick="switchView('profile')">
         <i class="fa-solid fa-user-gear"></i><span>Account</span>
@@ -270,6 +301,9 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
           <button onclick="loadSampleDatabase()" class="text-sm text-muted hover:text-accent transition-colors cursor-pointer">
             <i class="fa-solid fa-flask mr-1.5"></i>Try with a sample database
           </button>
+          <button onclick="switchView('compare')" class="ml-4 text-sm text-muted hover:text-accent transition-colors cursor-pointer">
+            <i class="fa-solid fa-code-compare mr-1.5"></i>Compare two databases
+          </button>
         </div>
 
         <div id="upload-saved-databases" class="mt-8 text-left fade-up" style="animation-delay:.5s"></div>
@@ -285,6 +319,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     <div id="view-graph" class="view-panel" style="padding:0;overflow:hidden">
       <div id="graph-container" class="w-full h-full relative">
         <div class="graph-tooltip" id="graph-tooltip"></div>
+        <div id="graph-toolbar" class="absolute top-5 left-5 right-5 z-10 flex flex-wrap items-center justify-between gap-3"></div>
         <div id="graph-legend" class="absolute bottom-5 left-5 glass-sm px-4 py-3 text-xs text-muted z-10 hidden"></div>
         <div id="graph-empty" class="absolute inset-0 flex items-center justify-center text-muted text-sm hidden">
           <div class="text-center"><i class="fa-solid fa-diagram-project text-3xl mb-3 opacity-30"></i><p>No tables with foreign key relationships found</p></div>
@@ -307,7 +342,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
       <div id="charts-content"></div>
     </div>
 
-    
+    <div id="view-compare" class="view-panel">
+      <div id="compare-content"></div>
+    </div>
+
     <div id="view-profile" class="view-panel">
       <div id="profile-content"></div>
     </div>
@@ -364,6 +402,10 @@ const state = {
   totalRows: 0,
   chartInstance: null,
   graphSim: null,
+  graphSvgNode: null,
+  tableExactFilter: null,
+  queryHistory: [],
+  compare: { left: null, right: null },
   navHistory: [],
 };
 
@@ -520,11 +562,15 @@ function defaultProfile() {
     displayName: 'Local Analyst',
     avatarDataUrl: '',
     avatarId: DEFAULT_AVATARS[0].id,
+    pinnedTables: [],
+    queryHistory: [],
     preferences: {
       reopenLast: true,
       autoSaveUploads: true,
       confirmDelete: true,
-      compactRows: false
+      compactRows: false,
+      lightTheme: false,
+      graphLayout: 'force'
     }
   };
 }
@@ -533,9 +579,14 @@ function loadProfile() {
   try {
     state.profile = { ...defaultProfile(), ...(JSON.parse(localStorage.getItem(STORAGE_KEYS.profile)) || {}) };
     state.profile.preferences = { ...defaultProfile().preferences, ...(state.profile.preferences || {}) };
+    state.profile.pinnedTables = Array.isArray(state.profile.pinnedTables) ? state.profile.pinnedTables : [];
+    state.profile.queryHistory = Array.isArray(state.profile.queryHistory) ? state.profile.queryHistory : [];
     if (!DEFAULT_AVATARS.some(a => a.id === state.profile.avatarId)) state.profile.avatarId = DEFAULT_AVATARS[0].id;
+    if (!['force','compact','grouped'].includes(state.profile.preferences.graphLayout)) state.profile.preferences.graphLayout = 'force';
+    state.queryHistory = state.profile.queryHistory;
   } catch {
     state.profile = defaultProfile();
+    state.queryHistory = state.profile.queryHistory;
   }
 }
 
@@ -561,6 +612,19 @@ function updateProfileChrome() {
     el.style.color = state.profile?.avatarDataUrl ? '' : selectedAvatar.color;
     el.innerHTML = state.profile?.avatarDataUrl ? `<img src="${state.profile.avatarDataUrl}" alt="">` : defaultAvatarInnerHTML();
   });
+}
+
+function applyTheme() {
+  document.body.classList.toggle('theme-light', !!state.profile?.preferences.lightTheme);
+}
+
+function toggleTheme() {
+  state.profile.preferences.lightTheme = !state.profile.preferences.lightTheme;
+  applyTheme();
+  saveProfile();
+  if (state.currentView === 'profile') renderProfile();
+  if (state.currentView === 'graph') renderGraph();
+  showToast(state.profile.preferences.lightTheme ? 'Light theme enabled' : 'Dark theme enabled', 'success');
 }
 
 function toggleProfileMenu() {
@@ -826,6 +890,7 @@ async function loadDatabase(db, options = {}) {
   state.sortCol = null;
   state.sortDir = 'asc';
   state.filterText = '';
+  state.tableExactFilter = null;
   state.page = 1;
   state.selectedRow = null;
   state.navHistory = [];
@@ -850,7 +915,8 @@ async function loadDatabase(db, options = {}) {
 function buildSidebar() {
   const container = document.getElementById('sidebar-tables');
   container.innerHTML = '';
-  state.tables.forEach((t, i) => {
+  const orderedTables = [...state.tables].sort((a, b) => Number(isPinnedTable(b)) - Number(isPinnedTable(a)) || a.localeCompare(b));
+  orderedTables.forEach((t, i) => {
     const info = state.tableInfo[t];
     const div = document.createElement('div');
     div.className = 'table-item';
@@ -858,6 +924,7 @@ function buildSidebar() {
     div.onclick = () => openTable(t);
     div.innerHTML = `
       <div class="flex items-center gap-2 min-w-0">
+        <span class="text-[11px] ${isPinnedTable(t) ? 'text-accent' : 'text-muted/40'}"><i class="fa-solid fa-thumbtack"></i></span>
         <div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:${getTableColor(t)}"></div>
         <span class="truncate">${t}</span>
       </div>
@@ -865,6 +932,22 @@ function buildSidebar() {
     `;
     container.appendChild(div);
   });
+}
+
+function isPinnedTable(tableName) {
+  return state.profile?.pinnedTables?.includes(tableName);
+}
+
+function togglePinnedTable(tableName, event) {
+  if (event) event.stopPropagation();
+  const pins = state.profile.pinnedTables;
+  if (pins.includes(tableName)) state.profile.pinnedTables = pins.filter(t => t !== tableName);
+  else state.profile.pinnedTables = [...pins, tableName];
+  saveProfile();
+  buildSidebar();
+  if (state.currentView === 'dashboard') renderDashboard();
+  if (state.currentView === 'table') renderTable();
+  showToast(isPinnedTable(tableName) ? 'Table pinned' : 'Table unpinned', 'success');
 }
 
 function updateDBInfo() {
@@ -898,6 +981,7 @@ function switchView(view, pushHistory = true) {
   else if (view === 'table') renderTable();
   else if (view === 'query') renderQuery();
   else if (view === 'charts') renderCharts();
+  else if (view === 'compare') renderCompare();
   else if (view === 'profile') renderProfile();
   else if (view === 'upload') {
     renderProfileSetupPrompt();
@@ -1104,6 +1188,7 @@ function renderProfile() {
           ${preferenceRow('autoSaveUploads', 'Auto-save uploads', 'Store validated SQLite files in IndexedDB for quick reopening.', prefs.autoSaveUploads)}
           ${preferenceRow('confirmDelete', 'Confirm before deletion', 'Ask before removing saved files from browser storage.', prefs.confirmDelete)}
           ${preferenceRow('compactRows', 'Compact table rows', 'Use denser row spacing when browsing table data.', prefs.compactRows)}
+          ${preferenceRow('lightTheme', 'Light theme', 'Use a brighter interface for daylight work.', prefs.lightTheme)}
         </div>
 
         <div class="glass p-5 fade-up" style="animation-delay:.1s">
@@ -1135,6 +1220,7 @@ function preferenceRow(key, title, description, checked) {
 function togglePreference(key) {
   state.profile.preferences[key] = !state.profile.preferences[key];
   if (key === 'compactRows') state.pageSize = state.profile.preferences.compactRows ? 100 : 50;
+  if (key === 'lightTheme') applyTheme();
   saveProfile();
   renderProfile();
 }
@@ -1168,6 +1254,12 @@ function quoteIdent(name) {
   return '"' + String(name).replace(/"/g, '""') + '"';
 }
 
+function sqlLiteral(value) {
+  if (value === null || value === undefined) return 'NULL';
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  return `'${escapeSqlText(value)}'`;
+}
+
 function escapeSqlText(value) {
   return String(value).replace(/'/g, "''");
 }
@@ -1184,12 +1276,14 @@ function renderDashboard() {
   const totalRows = state.tables.reduce((s, t) => s + state.tableInfo[t].rowCount, 0);
   const totalFks = state.tables.reduce((s, t) => s + state.fkMap[t].length, 0);
   const totalCols = state.tables.reduce((s, t) => s + state.tableInfo[t].columns.length, 0);
+  const pinned = state.profile.pinnedTables.filter(t => state.tableInfo[t]);
   let indexCount = 0;
   try {
     const idxRows = state.db.exec("SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name NOT LIKE 'sqlite_%'");
     if (idxRows.length > 0) indexCount = idxRows[0].values[0][0];
   } catch {}
-  const tableCards = state.tables.map((t, i) => {
+  const orderedTables = [...pinned, ...state.tables.filter(t => !pinned.includes(t))];
+  const tableCards = orderedTables.map((t, i) => {
     const info = state.tableInfo[t];
     const columns = info.columns.slice(0, 6).map(c => `<span class="badge bg-white/[0.05] text-muted">${escapeHtml(c.name)}</span>`).join(' ');
     return `
@@ -1199,7 +1293,10 @@ function renderDashboard() {
             <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:${getTableColor(t)}"></span>
             <span class="font-display font-semibold truncate">${escapeHtml(t)}</span>
           </div>
-          <span class="text-xs text-muted">${info.rowCount.toLocaleString()} rows</span>
+          <span class="flex items-center gap-2 flex-shrink-0">
+            <span class="text-xs text-muted">${info.rowCount.toLocaleString()} rows</span>
+            <span class="pin-button ${isPinnedTable(t) ? 'active' : ''}" title="${isPinnedTable(t) ? 'Unpin table' : 'Pin table'}" onclick='togglePinnedTable(${jsArg(t)}, event)'><i class="fa-solid fa-thumbtack"></i></span>
+          </span>
         </div>
         <div class="text-xs text-muted mb-3">${info.columns.length} columns &middot; ${info.fks.length} relationships</div>
         <div class="flex flex-wrap gap-1.5">${columns}</div>
@@ -1218,7 +1315,10 @@ function renderDashboard() {
       ${statCard('stat-indexes', 'Indexes', 'fa-key', indexCount + totalFks, 'bg-rose-500/15 text-rose-300', '.25s')}
     </div>
     <div class="flex items-center justify-between gap-4 mb-4">
-      <h3 class="font-display text-lg font-semibold">Tables</h3>
+      <div>
+        <h3 class="font-display text-lg font-semibold">Tables</h3>
+        <p class="text-xs text-muted mt-1">${pinned.length ? `${pinned.length} pinned table${pinned.length === 1 ? '' : 's'} shown first` : 'Pin important tables for faster browsing'}</p>
+      </div>
       <button class="px-3 py-2 rounded-lg bg-white/[0.05] text-muted text-xs font-semibold hover:text-text transition-colors" onclick="switchView('upload')">
         <i class="fa-solid fa-house mr-1.5"></i>Landing Page
       </button>
@@ -1250,8 +1350,22 @@ function renderGraph() {
   const tooltip = document.getElementById('graph-tooltip');
   const empty = document.getElementById('graph-empty');
   const legend = document.getElementById('graph-legend');
+  const toolbar = document.getElementById('graph-toolbar');
   container.querySelectorAll('svg').forEach(svg => svg.remove());
   if (state.graphSim) state.graphSim.stop();
+  toolbar.innerHTML = `
+    <div class="glass-sm p-2 flex items-center gap-2">
+      <select class="toolbar-select" id="graph-layout-select" onchange="setGraphLayout(this.value)">
+        <option value="force" ${state.profile.preferences.graphLayout === 'force' ? 'selected' : ''}>Force graph</option>
+        <option value="compact" ${state.profile.preferences.graphLayout === 'compact' ? 'selected' : ''}>Compact</option>
+        <option value="grouped" ${state.profile.preferences.graphLayout === 'grouped' ? 'selected' : ''}>Grouped</option>
+      </select>
+    </div>
+    <div class="glass-sm p-2 flex items-center gap-2">
+      <button class="toolbar-btn" onclick="exportGraphSVG()"><i class="fa-solid fa-vector-square"></i>SVG</button>
+      <button class="toolbar-btn" onclick="exportGraphPNG()"><i class="fa-solid fa-image"></i>PNG</button>
+      <button class="toolbar-btn" onclick="exportSchemaPDF()"><i class="fa-solid fa-file-pdf"></i>PDF</button>
+    </div>`;
   if (!state.db || state.tables.length === 0) {
     empty.classList.remove('hidden');
     legend.classList.add('hidden');
@@ -1267,10 +1381,13 @@ function renderGraph() {
     fks.forEach(fk => links.push({ source: table, target: fk.table, label: `${fk.from} -> ${fk.to}` }));
   });
   const svg = d3.select(container).append('svg').attr('width', width).attr('height', height);
+  state.graphSvgNode = svg.node();
   const g = svg.append('g');
+  const textColor = document.body.classList.contains('theme-light') ? '#111827' : '#E5E7EB';
+  const linkColor = document.body.classList.contains('theme-light') ? 'rgba(15,23,42,.28)' : 'rgba(255,255,255,.2)';
   svg.call(d3.zoom().scaleExtent([0.4, 3]).on('zoom', e => g.attr('transform', e.transform)));
-  g.append('g').selectAll('line').data(links).enter().append('line').attr('stroke', 'rgba(255,255,255,.2)').attr('stroke-width', 1.5);
-  const node = g.append('g').selectAll('g').data(nodes).enter().append('g').attr('cursor', 'pointer').call(d3.drag().on('start', dragStarted).on('drag', dragged).on('end', dragEnded)).on('click', (_, d) => openTable(d.id)).on('mouseenter', (event, d) => {
+  const link = g.append('g').selectAll('line').data(links).enter().append('line').attr('stroke', linkColor).attr('stroke-width', 1.5);
+  const node = g.append('g').selectAll('g').data(nodes).enter().append('g').attr('cursor', 'pointer').on('click', (_, d) => openTable(d.id)).on('mouseenter', (event, d) => {
     tooltip.innerHTML = `<strong>${escapeHtml(d.id)}</strong><br>${d.rows.toLocaleString()} rows`;
     tooltip.style.left = event.offsetX + 16 + 'px';
     tooltip.style.top = event.offsetY + 16 + 'px';
@@ -1278,12 +1395,25 @@ function renderGraph() {
   }).on('mouseleave', () => tooltip.classList.remove('visible'));
   node.append('circle').attr('r', 28).attr('fill', d => d.color).attr('opacity', .22);
   node.append('circle').attr('r', 18).attr('fill', d => d.color);
-  node.append('text').attr('text-anchor', 'middle').attr('y', 42).attr('fill', '#E5E7EB').attr('font-size', 12).text(d => d.id.length > 18 ? d.id.slice(0, 17) + '...' : d.id);
-  state.graphSim = d3.forceSimulation(nodes).force('link', d3.forceLink(links).id(d => d.id).distance(150)).force('charge', d3.forceManyBody().strength(-450)).force('center', d3.forceCenter(width / 2, height / 2)).on('tick', () => {
-    g.selectAll('line').attr('x1', d => d.source.x).attr('y1', d => d.source.y).attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+  node.append('text').attr('text-anchor', 'middle').attr('y', 42).attr('fill', textColor).attr('font-size', 12).text(d => d.id.length > 18 ? d.id.slice(0, 17) + '...' : d.id);
+  const updateGraphPositions = () => {
+    link.attr('x1', d => nodePosition(d.source).x).attr('y1', d => nodePosition(d.source).y).attr('x2', d => nodePosition(d.target).x).attr('y2', d => nodePosition(d.target).y);
     node.attr('transform', d => `translate(${d.x},${d.y})`);
-  });
+  };
+  const layout = state.profile.preferences.graphLayout;
+  if (layout === 'force') {
+    node.call(d3.drag().on('start', dragStarted).on('drag', dragged).on('end', dragEnded));
+    state.graphSim = d3.forceSimulation(nodes).force('link', d3.forceLink(links).id(d => d.id).distance(150)).force('charge', d3.forceManyBody().strength(-450)).force('center', d3.forceCenter(width / 2, height / 2)).on('tick', updateGraphPositions);
+  } else {
+    if (layout === 'compact') applyCompactLayout(nodes, width, height);
+    if (layout === 'grouped') applyGroupedLayout(nodes, links, width, height);
+    updateGraphPositions();
+  }
   legend.innerHTML = `${state.tables.length} tables &middot; ${links.length} relationships`;
+  function nodePosition(value) {
+    if (typeof value === 'object') return value;
+    return nodes.find(n => n.id === value) || { x: width / 2, y: height / 2 };
+  }
   function dragStarted(event, d) {
     if (!event.active) state.graphSim.alphaTarget(.3).restart();
     d.fx = d.x;
@@ -1300,6 +1430,103 @@ function renderGraph() {
   }
 }
 
+function setGraphLayout(layout) {
+  state.profile.preferences.graphLayout = layout;
+  saveProfile();
+  renderGraph();
+}
+
+function applyCompactLayout(nodes, width, height) {
+  const cols = Math.max(1, Math.ceil(Math.sqrt(nodes.length)));
+  const rows = Math.max(1, Math.ceil(nodes.length / cols));
+  nodes.forEach((node, i) => {
+    node.x = ((i % cols) + 1) * (width / (cols + 1));
+    node.y = (Math.floor(i / cols) + 1) * (height / (rows + 1));
+  });
+}
+
+function applyGroupedLayout(nodes, links, width, height) {
+  const groups = relationshipGroups(nodes, links);
+  const cols = Math.max(1, Math.ceil(Math.sqrt(groups.length)));
+  groups.forEach((group, groupIndex) => {
+    const cx = ((groupIndex % cols) + 1) * (width / (cols + 1));
+    const cy = (Math.floor(groupIndex / cols) + 1) * (height / (Math.ceil(groups.length / cols) + 1));
+    const radius = Math.max(70, Math.min(150, group.length * 24));
+    group.forEach((id, i) => {
+      const node = nodes.find(n => n.id === id);
+      const angle = group.length === 1 ? 0 : (Math.PI * 2 * i) / group.length;
+      node.x = cx + Math.cos(angle) * (group.length === 1 ? 0 : radius);
+      node.y = cy + Math.sin(angle) * (group.length === 1 ? 0 : radius);
+    });
+  });
+}
+
+function relationshipGroups(nodes, links) {
+  const parent = Object.fromEntries(nodes.map(n => [n.id, n.id]));
+  const find = id => parent[id] === id ? id : (parent[id] = find(parent[id]));
+  const join = (a, b) => {
+    const pa = find(typeof a === 'object' ? a.id : a);
+    const pb = find(typeof b === 'object' ? b.id : b);
+    if (pa !== pb) parent[pb] = pa;
+  };
+  links.forEach(link => join(link.source, link.target));
+  const grouped = {};
+  nodes.forEach(node => {
+    const key = find(node.id);
+    grouped[key] = grouped[key] || [];
+    grouped[key].push(node.id);
+  });
+  return Object.values(grouped).sort((a, b) => b.length - a.length);
+}
+
+function graphSvgString() {
+  if (!state.graphSvgNode) return '';
+  const clone = state.graphSvgNode.cloneNode(true);
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  const width = clone.getAttribute('width') || '1200';
+  const height = clone.getAttribute('height') || '800';
+  const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  bg.setAttribute('width', width);
+  bg.setAttribute('height', height);
+  bg.setAttribute('fill', document.body.classList.contains('theme-light') ? '#F8FAFC' : '#0B0F19');
+  clone.insertBefore(bg, clone.firstChild);
+  return new XMLSerializer().serializeToString(clone);
+}
+
+function exportGraphSVG() {
+  const svg = graphSvgString();
+  if (!svg) return showToast('Open the relationship graph before exporting.', 'error');
+  downloadFile(svg, `${safeFileStem(state.dbFileName)}-schema.svg`, 'image/svg+xml');
+}
+
+function exportGraphPNG() {
+  const svg = graphSvgString();
+  if (!svg) return showToast('Open the relationship graph before exporting.', 'error');
+  const image = new Image();
+  const blob = new Blob([svg], { type: 'image/svg+xml' });
+  const url = URL.createObjectURL(blob);
+  image.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = image.width || state.graphSvgNode.width.baseVal.value || 1200;
+    canvas.height = image.height || state.graphSvgNode.height.baseVal.value || 800;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(image, 0, 0);
+    URL.revokeObjectURL(url);
+    canvas.toBlob(png => downloadBlob(png, `${safeFileStem(state.dbFileName)}-schema.png`), 'image/png');
+  };
+  image.onerror = () => {
+    URL.revokeObjectURL(url);
+    showToast('PNG export failed.', 'error');
+  };
+  image.src = url;
+}
+
+function exportSchemaPDF() {
+  if (!state.db) return showToast('Open a database before exporting schema.', 'error');
+  const lines = schemaReportLines();
+  downloadBlob(buildPdfBlob(lines), `${safeFileStem(state.dbFileName)}-schema.pdf`);
+}
+
 function openTable(tableName) {
   if (!state.tableInfo[tableName]) return;
   state.currentTable = tableName;
@@ -1307,13 +1534,43 @@ function openTable(tableName) {
   state.sortCol = null;
   state.sortDir = 'asc';
   state.filterText = '';
+  state.tableExactFilter = null;
+  switchView('table');
+}
+
+function openRelatedTable(tableName, columnName, value) {
+  if (!state.tableInfo[tableName]) return;
+  state.currentTable = tableName;
+  state.page = 1;
+  state.sortCol = null;
+  state.sortDir = 'asc';
+  state.filterText = '';
+  state.tableExactFilter = { column: columnName, value };
+  closeInspector();
   switchView('table');
 }
 
 function tableWhereClause(columns) {
-  if (!state.filterText.trim()) return '';
-  const q = escapeSqlText(state.filterText.trim());
-  return 'WHERE ' + columns.map(c => `CAST(${quoteIdent(c.name)} AS TEXT) LIKE '%${q}%'`).join(' OR ');
+  const clauses = [];
+  if (state.tableExactFilter?.column) {
+    const exact = state.tableExactFilter.value === null || state.tableExactFilter.value === undefined
+      ? `${quoteIdent(state.tableExactFilter.column)} IS NULL`
+      : `${quoteIdent(state.tableExactFilter.column)} = ${sqlLiteral(state.tableExactFilter.value)}`;
+    clauses.push(exact);
+  }
+  if (state.filterText.trim()) {
+    const q = escapeSqlText(state.filterText.trim());
+    clauses.push('(' + columns.map(c => `CAST(${quoteIdent(c.name)} AS TEXT) LIKE '%${q}%'`).join(' OR ') + ')');
+  }
+  return clauses.length ? 'WHERE ' + clauses.join(' AND ') : '';
+}
+
+function cellHTML(columnName, value) {
+  const fk = state.fkMap[state.currentTable]?.find(item => item.from === columnName);
+  if (fk && value !== null && value !== undefined) {
+    return `<button class="fk-link-btn" onclick='event.stopPropagation(); openRelatedTable(${jsArg(fk.table)}, ${jsArg(fk.to)}, ${jsArg(value)})'>${escapeHtml(value)} <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i></button>`;
+  }
+  return escapeHtml(value);
 }
 
 function renderTable() {
@@ -1343,14 +1600,18 @@ function renderTable() {
   const headers = state.tableColumns.map(c => `<th onclick='sortTable(${jsArg(c)})'>${escapeHtml(c)} ${state.sortCol === c ? (state.sortDir === 'asc' ? '&#9650;' : '&#9660;') : ''}</th>`).join('');
   const body = rows.map((row, idx) => `
     <tr onclick="openInspector(${idx})" class="${state.selectedRow === row ? 'row-selected' : ''}">
-      ${row.map(v => `<td>${escapeHtml(v)}</td>`).join('')}
+      ${row.map((v, i) => `<td>${cellHTML(state.tableColumns[i], v)}</td>`).join('')}
     </tr>`).join('');
   document.getElementById('table-content').innerHTML = `
     <div class="px-6 py-4 border-b border-border flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
       <div class="min-w-0">
         <button class="text-xs text-muted hover:text-accent mb-2" onclick="goBack()"><i class="fa-solid fa-arrow-left mr-1.5"></i>Back</button>
-        <h2 class="font-display text-2xl font-bold truncate">${escapeHtml(state.currentTable)}</h2>
-        <p class="text-xs text-muted mt-1">${total.toLocaleString()} rows &middot; ${info.columns.length} columns</p>
+        <div class="flex items-center gap-2">
+          <h2 class="font-display text-2xl font-bold truncate">${escapeHtml(state.currentTable)}</h2>
+          <button class="pin-button ${isPinnedTable(state.currentTable) ? 'active' : ''}" title="${isPinnedTable(state.currentTable) ? 'Unpin table' : 'Pin table'}" onclick='togglePinnedTable(${jsArg(state.currentTable)}, event)'><i class="fa-solid fa-thumbtack"></i></button>
+        </div>
+        <p class="text-xs text-muted mt-1">${total.toLocaleString()} rows &middot; ${info.columns.length} columns${state.tableExactFilter ? ` &middot; filtered by ${escapeHtml(state.tableExactFilter.column)}` : ''}</p>
+        ${state.tableExactFilter ? `<button class="toolbar-btn mt-3" onclick="clearRelationFilter()"><i class="fa-solid fa-filter-circle-xmark"></i>Clear relation filter</button>` : ''}
       </div>
       <div class="flex items-center gap-2">
         <input id="table-search" class="form-field w-64" placeholder="Search table" value="${escapeHtml(state.filterText)}">
@@ -1402,6 +1663,12 @@ function changePage(delta) {
   renderTable();
 }
 
+function clearRelationFilter() {
+  state.tableExactFilter = null;
+  state.page = 1;
+  renderTable();
+}
+
 function openInspector(rowIndex) {
   const row = state.tableData?.[rowIndex];
   if (!row) return;
@@ -1410,6 +1677,7 @@ function openInspector(rowIndex) {
     <div class="py-3 border-b border-border last:border-b-0">
       <div class="text-xs text-muted uppercase tracking-widest font-semibold mb-1">${escapeHtml(c)}</div>
       <div class="text-sm break-words">${escapeHtml(row[i])}</div>
+      ${fieldRelationActionHTML(c, row[i])}
     </div>`).join('');
   document.getElementById('inspector-content').innerHTML = `
     <div class="p-5 border-b border-border flex items-center justify-between">
@@ -1419,10 +1687,35 @@ function openInspector(rowIndex) {
       </div>
       <button class="icon-btn" onclick="closeInspector()"><i class="fa-solid fa-xmark"></i></button>
     </div>
-    <div class="p-5">${fields}</div>`;
+    <div class="p-5">${fields}${relatedRowsHTML(row)}</div>`;
   document.getElementById('inspector-panel').classList.add('open');
   document.getElementById('inspector-overlay').classList.add('open');
   renderTable();
+}
+
+function fieldRelationActionHTML(columnName, value) {
+  const fk = state.fkMap[state.currentTable]?.find(item => item.from === columnName);
+  if (!fk || value === null || value === undefined) return '';
+  return `<button class="toolbar-btn mt-2" onclick='openRelatedTable(${jsArg(fk.table)}, ${jsArg(fk.to)}, ${jsArg(value)})'><i class="fa-solid fa-arrow-up-right-from-square"></i>Open ${escapeHtml(fk.table)}</button>`;
+}
+
+function relatedRowsHTML(row) {
+  const actions = [];
+  state.tables.forEach(table => {
+    state.fkMap[table].filter(fk => fk.table === state.currentTable).forEach(fk => {
+      const idx = state.tableColumns.indexOf(fk.to);
+      if (idx === -1) return;
+      const value = row[idx];
+      if (value === null || value === undefined) return;
+      actions.push(`<button class="toolbar-btn" onclick='openRelatedTable(${jsArg(table)}, ${jsArg(fk.from)}, ${jsArg(value)})'><i class="fa-solid fa-link"></i>${escapeHtml(table)}.${escapeHtml(fk.from)}</button>`);
+    });
+  });
+  if (!actions.length) return '';
+  return `
+    <div class="pt-5">
+      <div class="text-xs text-muted uppercase tracking-widest font-semibold mb-3">Related Rows</div>
+      <div class="flex flex-wrap gap-2">${actions.join('')}</div>
+    </div>`;
 }
 
 function closeInspector() {
@@ -1441,7 +1734,19 @@ function renderQuery() {
         </div>
         <button class="px-3 py-2 rounded-lg bg-accent text-bg text-xs font-bold hover:bg-accent-hover transition-colors" onclick="runQuery()"><i class="fa-solid fa-play mr-1.5"></i>Run</button>
       </div>
-      <textarea id="sql-editor" class="query-editor">${escapeHtml(defaultSql)}</textarea>
+      <div class="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-4">
+        <div>
+          <textarea id="sql-editor" class="query-editor">${escapeHtml(defaultSql)}</textarea>
+          <div class="flex flex-wrap gap-2 mt-3">${snippetButtonsHTML()}</div>
+        </div>
+        <div class="glass-sm p-4 max-h-56 overflow-auto">
+          <div class="flex items-center justify-between gap-3 mb-3">
+            <h3 class="font-display font-semibold text-sm">Query History</h3>
+            <button class="toolbar-btn" onclick="clearQueryHistory()"><i class="fa-solid fa-eraser"></i>Clear</button>
+          </div>
+          <div id="query-history-list" class="space-y-2">${queryHistoryHTML()}</div>
+        </div>
+      </div>
     </div>
     <div id="query-result" class="flex-1 overflow-auto p-6"></div>`;
   document.getElementById('sql-editor').addEventListener('keydown', e => {
@@ -1450,6 +1755,70 @@ function renderQuery() {
       runQuery();
     }
   });
+}
+
+function snippetButtonsHTML() {
+  return [
+    ['top100', 'Top 100 rows', 'fa-list-ol'],
+    ['duplicates', 'Find duplicates', 'fa-clone'],
+    ['sizes', 'Table sizes', 'fa-weight-hanging']
+  ].map(([id, label, icon]) => `<button class="toolbar-btn" onclick="applySnippet('${id}')"><i class="fa-solid ${icon}"></i>${label}</button>`).join('');
+}
+
+function queryHistoryHTML() {
+  if (!state.queryHistory.length) return '<div class="text-xs text-muted">Run a query and it will appear here.</div>';
+  return state.queryHistory.slice(0, 12).map(item => `
+    <button class="w-full text-left glass-sm p-3 hover:bg-white/[0.06] transition-colors" onclick='setQueryEditor(${jsArg(item.sql)}, true)'>
+      <span class="block text-xs font-semibold truncate">${escapeHtml(item.sql.replace(/\s+/g, ' '))}</span>
+      <span class="block text-[11px] text-muted mt-1">${formatDate(item.ranAt)}</span>
+    </button>`).join('');
+}
+
+function setQueryEditor(sql, runAfter = false) {
+  const editor = document.getElementById('sql-editor');
+  if (!editor) return;
+  editor.value = sql;
+  editor.focus();
+  if (runAfter) runQuery();
+}
+
+function applySnippet(id) {
+  if (!state.db || !state.tables.length) {
+    showToast('Open a database before using snippets.', 'error');
+    return;
+  }
+  const table = state.currentTable || state.tables[0];
+  const columns = state.tableInfo[table].columns;
+  let sql = '';
+  if (id === 'top100') sql = `SELECT * FROM ${quoteIdent(table)} LIMIT 100;`;
+  if (id === 'duplicates') {
+    const column = columns.find(c => !c.pk)?.name || columns[0]?.name || 'id';
+    sql = `SELECT ${quoteIdent(column)}, COUNT(*) AS duplicate_count FROM ${quoteIdent(table)} GROUP BY ${quoteIdent(column)} HAVING COUNT(*) > 1 ORDER BY duplicate_count DESC LIMIT 50;`;
+  }
+  if (id === 'sizes') {
+    sql = state.tables.map(t => `SELECT '${escapeSqlText(t)}' AS table_name, COUNT(*) AS row_count FROM ${quoteIdent(t)}`).join('\nUNION ALL\n') + '\nORDER BY row_count DESC;';
+  }
+  setQueryEditor(sql);
+}
+
+function saveQueryHistory(sql) {
+  const normalized = sql.trim();
+  if (!normalized) return;
+  const existing = state.queryHistory.filter(item => item.sql !== normalized);
+  state.queryHistory = [{ sql: normalized, ranAt: new Date().toISOString() }, ...existing].slice(0, 30);
+  state.profile.queryHistory = state.queryHistory;
+  saveProfile();
+  const list = document.getElementById('query-history-list');
+  if (list) list.innerHTML = queryHistoryHTML();
+}
+
+function clearQueryHistory() {
+  state.queryHistory = [];
+  state.profile.queryHistory = [];
+  saveProfile();
+  const list = document.getElementById('query-history-list');
+  if (list) list.innerHTML = queryHistoryHTML();
+  showToast('Query history cleared', 'success');
 }
 
 function runQuery() {
@@ -1461,6 +1830,7 @@ function runQuery() {
   if (!sql) return;
   try {
     const results = state.db.exec(sql);
+    saveQueryHistory(sql);
     const target = document.getElementById('query-result');
     if (!results.length) {
       target.innerHTML = emptyState('Query executed successfully with no returned rows.');
@@ -1556,6 +1926,159 @@ function drawChart() {
   }
 }
 
+function renderCompare() {
+  document.getElementById('compare-content').innerHTML = `
+    <div class="mb-6 fade-up flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+      <div>
+        <h2 class="font-display text-2xl font-bold tracking-tight mb-1">Database Comparison</h2>
+        <p class="text-muted text-sm">Upload two SQLite files or compare another file against the current database.</p>
+      </div>
+      <button class="toolbar-btn self-start sm:self-auto" onclick="switchView('upload')"><i class="fa-solid fa-house"></i>Landing Page</button>
+    </div>
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-5">
+      ${compareUploadCard('left', 'Database A')}
+      ${compareUploadCard('right', 'Database B')}
+    </div>
+    <div id="compare-results">${comparisonHTML()}</div>`;
+  ['left','right'].forEach(side => {
+    document.getElementById(`compare-${side}-input`).addEventListener('change', e => {
+      if (e.target.files[0]) loadCompareFile(e.target.files[0], side);
+    });
+  });
+}
+
+function compareUploadCard(side, label) {
+  const item = state.compare[side];
+  return `
+    <div class="glass p-5">
+      <div class="flex items-start justify-between gap-4 mb-4">
+        <div>
+          <h3 class="font-display text-lg font-semibold">${label}</h3>
+          <p class="text-xs text-muted mt-1">${item ? `${escapeHtml(item.filename)} &middot; ${item.tables.length} tables` : 'No file selected'}</p>
+        </div>
+        ${side === 'left' && state.db ? `<button class="toolbar-btn" onclick="useCurrentForCompare()"><i class="fa-solid fa-database"></i>Use Current</button>` : ''}
+      </div>
+      <input type="file" id="compare-${side}-input" accept=".db,.sqlite,.sqlite3" class="hidden">
+      <button class="toolbar-btn w-full" onclick="document.getElementById('compare-${side}-input').click()"><i class="fa-solid fa-upload"></i>Upload ${label}</button>
+    </div>`;
+}
+
+async function loadCompareFile(file, side) {
+  const validExts = ['.db', '.sqlite', '.sqlite3'];
+  const ext = '.' + file.name.split('.').pop().toLowerCase();
+  if (!validExts.includes(ext)) return showToast('Choose a SQLite database file.', 'error');
+  try {
+    const buffer = await file.arrayBuffer();
+    const db = new state.SQL.Database(new Uint8Array(buffer));
+    const schema = extractSchema(db);
+    db.close?.();
+    state.compare[side] = { filename: file.name, size: file.size, ...schema };
+    renderCompare();
+  } catch (e) {
+    showToast('Could not read comparison database: ' + e.message, 'error');
+  }
+}
+
+function useCurrentForCompare() {
+  if (!state.db) return;
+  state.compare.left = {
+    filename: state.dbFileName || 'Current database',
+    size: state.dbFileSize,
+    tables: [...state.tables],
+    tableInfo: JSON.parse(JSON.stringify(state.tableInfo)),
+    fkMap: JSON.parse(JSON.stringify(state.fkMap))
+  };
+  renderCompare();
+}
+
+function comparisonHTML() {
+  const left = state.compare.left;
+  const right = state.compare.right;
+  if (!left || !right) return emptyState('Upload both databases to see schema differences.');
+  const diff = compareSchemas(left, right);
+  const tableDiffs = [
+    ...diff.addedTables.map(t => diffRow('added', 'Added table', t, `${right.tableInfo[t].columns.length} columns`)),
+    ...diff.removedTables.map(t => diffRow('removed', 'Removed table', t, `${left.tableInfo[t].columns.length} columns`)),
+    ...diff.changedTables.map(item => diffRow('changed', 'Changed table', item.table, item.changes.join(', ')))
+  ].join('');
+  return `
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-5">
+      ${statMini('Added', diff.addedTables.length, 'diff-added')}
+      ${statMini('Removed', diff.removedTables.length, 'diff-removed')}
+      ${statMini('Changed', diff.changedTables.length, 'diff-changed')}
+      ${statMini('Unchanged', diff.unchangedTables.length, '')}
+    </div>
+    <div class="glass p-5">
+      <div class="flex items-center justify-between gap-4 mb-4">
+        <h3 class="font-display text-lg font-semibold">Schema Differences</h3>
+        <button class="toolbar-btn" onclick="downloadCompareReport()"><i class="fa-solid fa-file-arrow-down"></i>Export JSON</button>
+      </div>
+      <div class="space-y-3">${tableDiffs || '<div class="text-sm text-muted">No schema differences found.</div>'}</div>
+    </div>`;
+}
+
+function statMini(label, value, cls) {
+  return `<div class="compare-card ${cls}"><div class="text-xs text-muted uppercase tracking-widest font-semibold">${label}</div><div class="font-display text-2xl font-bold mt-1">${value}</div></div>`;
+}
+
+function diffRow(kind, title, name, detail) {
+  const cls = kind === 'added' ? 'diff-added' : kind === 'removed' ? 'diff-removed' : 'diff-changed';
+  const icon = kind === 'added' ? 'fa-plus' : kind === 'removed' ? 'fa-minus' : 'fa-pen';
+  return `
+    <div class="compare-card ${cls}">
+      <div class="flex items-start gap-3">
+        <i class="fa-solid ${icon} mt-1"></i>
+        <div class="min-w-0">
+          <div class="text-xs text-muted uppercase tracking-widest font-semibold">${title}</div>
+          <div class="font-display font-semibold mt-1">${escapeHtml(name)}</div>
+          <div class="text-xs text-muted mt-1">${escapeHtml(detail)}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function compareSchemas(left, right) {
+  const leftTables = new Set(left.tables);
+  const rightTables = new Set(right.tables);
+  const addedTables = right.tables.filter(t => !leftTables.has(t));
+  const removedTables = left.tables.filter(t => !rightTables.has(t));
+  const changedTables = [];
+  const unchangedTables = [];
+  left.tables.filter(t => rightTables.has(t)).forEach(table => {
+    const changes = columnDiffs(left.tableInfo[table].columns, right.tableInfo[table].columns);
+    if (changes.length) changedTables.push({ table, changes });
+    else unchangedTables.push(table);
+  });
+  return { addedTables, removedTables, changedTables, unchangedTables };
+}
+
+function columnDiffs(leftColumns, rightColumns) {
+  const leftMap = Object.fromEntries(leftColumns.map(c => [c.name, c]));
+  const rightMap = Object.fromEntries(rightColumns.map(c => [c.name, c]));
+  const changes = [];
+  Object.keys(rightMap).filter(c => !leftMap[c]).forEach(c => changes.push(`added column ${c}`));
+  Object.keys(leftMap).filter(c => !rightMap[c]).forEach(c => changes.push(`removed column ${c}`));
+  Object.keys(leftMap).filter(c => rightMap[c]).forEach(c => {
+    const a = leftMap[c];
+    const b = rightMap[c];
+    if ((a.type || 'ANY') !== (b.type || 'ANY') || !!a.pk !== !!b.pk || !!a.notnull !== !!b.notnull) changes.push(`changed column ${c}`);
+  });
+  return changes;
+}
+
+function downloadCompareReport() {
+  const left = state.compare.left;
+  const right = state.compare.right;
+  if (!left || !right) return;
+  const report = {
+    left: left.filename,
+    right: right.filename,
+    generatedAt: new Date().toISOString(),
+    diff: compareSchemas(left, right)
+  };
+  downloadFile(JSON.stringify(report, null, 2), 'db-lens-schema-comparison.json', 'application/json');
+}
+
 function exportCSV(tableName) {
   try {
     const r = state.db.exec(`SELECT * FROM ${quoteIdent(tableName)}`);
@@ -1595,14 +2118,72 @@ function exportJSON(tableName) {
   }
 }
 
-function downloadFile(content, filename, mimeType) {
-  const blob = new Blob([content], { type: mimeType });
+function safeFileStem(name) {
+  return (name || 'database').replace(/\.[^.]+$/, '').replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '') || 'database';
+}
+
+function schemaReportLines() {
+  const lines = [`DB Lens schema report`, `Database: ${state.dbFileName || 'Untitled'}`, `Tables: ${state.tables.length}`, `Generated: ${new Date().toLocaleString()}`, ''];
+  state.tables.forEach(table => {
+    const info = state.tableInfo[table];
+    lines.push(`${table} (${info.rowCount} rows)`);
+    info.columns.forEach(column => lines.push(`  ${column.name} ${column.type || 'ANY'}${column.pk ? ' primary key' : ''}${column.notnull ? ' not null' : ''}`));
+    info.fks.forEach(fk => lines.push(`  foreign key ${fk.from} -> ${fk.table}.${fk.to}`));
+    lines.push('');
+  });
+  return lines;
+}
+
+function pdfEscape(value) {
+  return String(value).replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)').replace(/[^\x20-\x7E]/g, '');
+}
+
+function buildPdfBlob(lines) {
+  const pageLines = [];
+  for (let i = 0; i < lines.length; i += 46) pageLines.push(lines.slice(i, i + 46));
+  const objects = [];
+  const addObject = content => {
+    objects.push(content);
+    return objects.length;
+  };
+  addObject('<< /Type /Catalog /Pages 2 0 R >>');
+  addObject('');
+  const fontId = addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
+  const pageIds = [];
+  pageLines.forEach(page => {
+    const stream = `BT /F1 10 Tf 13 TL 50 790 Td ${page.map(line => `(${pdfEscape(line).slice(0, 96)}) Tj T*`).join(' ')} ET`;
+    const contentId = addObject(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
+    const pageId = addObject(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 842] /Resources << /Font << /F1 ${fontId} 0 R >> >> /Contents ${contentId} 0 R >>`);
+    pageIds.push(pageId);
+  });
+  objects[1] = `<< /Type /Pages /Kids [${pageIds.map(id => `${id} 0 R`).join(' ')}] /Count ${pageIds.length} >>`;
+  let pdf = '%PDF-1.4\n';
+  const offsets = [0];
+  objects.forEach((object, index) => {
+    offsets.push(pdf.length);
+    pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  });
+  const xref = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  offsets.slice(1).forEach(offset => {
+    pdf += `${String(offset).padStart(10, '0')} 00000 n \n`;
+  });
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  return new Blob([pdf], { type: 'application/pdf' });
+}
+
+function downloadBlob(blob, filename) {
+  if (!blob) return;
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function downloadFile(content, filename, mimeType) {
+  downloadBlob(new Blob([content], { type: mimeType }), filename);
 }
 
 function loadSampleDatabase() {
@@ -1674,6 +2255,7 @@ document.addEventListener('keydown', e => {
 
 async function init() {
   loadProfile();
+  applyTheme();
   updateProfileChrome();
   renderProfileSetupPrompt();
   await initSQL();
