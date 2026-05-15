@@ -2,13 +2,6 @@
 
 DB Lens is a single-page SQLite database viewer that runs in the browser. It opens local `.db`, `.sqlite`, and `.sqlite3` files, shows schema relationships, supports SQL queries, and keeps optional saved databases in browser storage.
 
-## Creator
-
-**Abhinav Gupta**
-
-- GitHub: [cranbru](https://github.com/cranbru)
-- LinkedIn: [Abhinav Gupta](https://www.linkedin.com/in/abhinav-gupta-4tech/)
-
 ## Preview
 
 ### Landing Page
